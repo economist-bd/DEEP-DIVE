@@ -1,0 +1,2416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEEP DIVE — Tech That Earns Its Keep | Learning To Earning Bangladesh</title>
+<meta name="description" content="High-production tech reviews, deep-dive written companions, and honest buying guides.">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-tint: #0a0a0a;
+    --red: #ff1f1f;
+    --red-deep: #c80000;
+    --white: #ffffff;
+    --yellow: #f0ff00;
+    --blue: #00d4ff;
+    --gray-1: #141414;
+    --gray-2: #1f1f1f;
+    --gray-3: #2a2a2a;
+  }
+  
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  
+  html { scroll-behavior: smooth; }
+  
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x: hidden;
+    transition: background-color 0.8s ease;
+    cursor: none;
+  }
+  
+  @media (max-width: 768px) {
+    body { cursor: auto; }
+    .cursor { display: none; }
+  }
+  
+  .font-display { font-family: 'Anton', sans-serif; letter-spacing: -0.02em; line-height: 0.92; }
+  .font-display-2 { font-family: 'Archivo Black', sans-serif; letter-spacing: -0.03em; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+  
+  /* Film grain overlay */
+  .grain {
+    position: fixed;
+    inset: -50%;
+    width: 200%;
+    height: 200%;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.09;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    animation: grainShift 0.4s steps(3) infinite;
+  }
+  
+  @keyframes grainShift {
+    0% { transform: translate(0, 0); }
+    33% { transform: translate(-3%, 2%); }
+    66% { transform: translate(2%, -3%); }
+    100% { transform: translate(0, 0); }
+  }
+  
+  /* Scanline overlay for video areas */
+  .scanlines {
+    position: relative;
+  }
+  .scanlines::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(0,0,0,0.25) 2px,
+      rgba(0,0,0,0.25) 3px
+    );
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 2;
+  }
+  .scanlines:hover::after { opacity: 1; }
+  
+  /* Custom cursor */
+  .cursor {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    background: var(--red);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: difference;
+    transition: width 0.2s, height 0.2s, background 0.2s, border 0.2s;
+    transform: translate(-50%, -50%);
+    border: 0px solid var(--yellow);
+  }
+  .cursor.expand {
+    width: 60px;
+    height: 60px;
+    background: transparent;
+    border: 2px solid var(--yellow);
+  }
+  .cursor.text {
+    width: 80px;
+    height: 80px;
+    background: var(--red);
+    mix-blend-mode: normal;
+    opacity: 0.2;
+  }
+  
+  /* Marquee */
+  .marquee { overflow: hidden; white-space: nowrap; }
+  .marquee-track {
+    display: inline-block;
+    animation: marquee var(--duration, 40s) linear infinite;
+  }
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  
+  /* Video card */
+  .video-card {
+    position: relative;
+    overflow: hidden;
+    background: var(--gray-1);
+    transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .video-card .thumb-wrap {
+    position: relative;
+    aspect-ratio: 16/9;
+    overflow: hidden;
+  }
+  .video-card .thumb {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease, filter 0.4s;
+    filter: saturate(0.9) contrast(1.05);
+  }
+  .video-card:hover .thumb {
+    transform: scale(1.06);
+    filter: saturate(1.2) contrast(1.1);
+  }
+  .video-card .play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 100%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 3;
+  }
+  .video-card:hover .play-overlay { opacity: 1; }
+  .video-card .play-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0.7);
+    transition: transform 0.3s;
+  }
+  .video-card:hover .play-icon { transform: scale(1); }
+  
+  /* Hover preview iframe */
+  .preview-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    z-index: 4;
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  .video-card:hover .preview-frame { opacity: 1; }
+  
+  /* Filter pills */
+  .filter-pill {
+    padding: 8px 18px;
+    border: 1px solid var(--gray-3);
+    background: transparent;
+    color: var(--white);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    cursor: none;
+    transition: all 0.2s;
+    border-radius: 999px;
+  }
+  .filter-pill:hover { border-color: var(--red); color: var(--red); }
+  .filter-pill.active {
+    background: var(--red);
+    border-color: var(--red);
+    color: var(--white);
+  }
+  
+  /* Shuffle grid */
+  .shuffle-item {
+    transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.3s;
+  }
+  .shuffle-item.shuffling {
+    transform: scale(0.95) translateY(20px);
+    opacity: 0;
+  }
+  
+  /* Price slider */
+  .price-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    background: var(--gray-3);
+    outline: none;
+    border-radius: 3px;
+  }
+  .price-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    background: var(--yellow);
+    border: 3px solid var(--red);
+    border-radius: 50%;
+    cursor: none;
+  }
+  .price-slider::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    background: var(--yellow);
+    border: 3px solid var(--red);
+    border-radius: 50%;
+    cursor: none;
+  }
+  
+  /* Typewriter caret */
+  .caret {
+    display: inline-block;
+    width: 3px;
+    height: 1em;
+    background: var(--yellow);
+    animation: blink 0.8s infinite;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  
+  /* Glitch */
+  .glitch { position: relative; display: inline-block; }
+  .glitch::before, .glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    overflow: hidden;
+  }
+  .glitch::before {
+    color: var(--red);
+    animation: glitchTop 4s infinite linear alternate-reverse;
+    clip-path: polygon(0 0, 100% 0, 100% 33%, 0 33%);
+  }
+  .glitch::after {
+    color: var(--blue);
+    animation: glitchBot 4s infinite linear alternate-reverse;
+    clip-path: polygon(0 67%, 100% 67%, 100% 100%, 0 100%);
+  }
+  @keyframes glitchTop {
+    0%, 92%, 100% { transform: translate(0); }
+    93% { transform: translate(-3px, 1px); }
+    95% { transform: translate(3px, -1px); }
+    97% { transform: translate(-2px, 2px); }
+  }
+  @keyframes glitchBot {
+    0%, 92%, 100% { transform: translate(0); }
+    93% { transform: translate(3px, -1px); }
+    95% { transform: translate(-3px, 1px); }
+    97% { transform: translate(2px, -2px); }
+  }
+  
+  /* Section color shifts */
+  body.tint-red { background-color: #0d0606; }
+  body.tint-blue { background-color: #05080c; }
+  body.tint-yellow { background-color: #0c0a05; }
+  
+  /* Section divider */
+  .div-line {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gray-3) 20%, var(--gray-3) 80%, transparent);
+  }
+  
+  /* Letterbox bars */
+  .letterbox {
+    position: relative;
+  }
+  .letterbox::before, .letterbox::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 24px;
+    background: #000;
+    z-index: 6;
+  }
+  .letterbox::before { top: 0; }
+  .letterbox::after { bottom: 0; }
+  
+  /* Admin panel */
+  .admin-panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: 100%;
+    max-width: 520px;
+    height: 100vh;
+    background: #050505;
+    border-left: 1px solid var(--gray-3);
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+    z-index: 1000;
+    overflow-y: auto;
+  }
+  .admin-panel.open { transform: translateX(0); }
+  
+  .admin-tab {
+    padding: 10px 16px;
+    border-bottom: 2px solid transparent;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: none;
+    transition: all 0.2s;
+    color: #888;
+  }
+  .admin-tab:hover { color: var(--white); }
+  .admin-tab.active {
+    color: var(--yellow);
+    border-bottom-color: var(--yellow);
+  }
+  
+  /* Form inputs */
+  .admin-input {
+    width: 100%;
+    background: var(--gray-1);
+    border: 1px solid var(--gray-3);
+    color: var(--white);
+    padding: 10px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    border-radius: 2px;
+    transition: border 0.2s;
+  }
+  .admin-input:focus { outline: none; border-color: var(--red); }
+  
+  /* Recommendation card */
+  .rec-card {
+    transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.3s;
+  }
+  .rec-card.filtered-out {
+    opacity: 0.25;
+    transform: scale(0.95);
+  }
+  
+  /* Verdict badges */
+  .verdict-buy { background: var(--yellow); color: #000; }
+  .verdict-wait { background: var(--blue); color: #000; }
+  .verdict-skip { background: var(--red); color: var(--white); }
+  
+  /* Sticky video */
+  .sticky-vid {
+    position: sticky;
+    top: 100px;
+  }
+  
+  /* Hover link */
+  .hover-red { transition: color 0.2s; }
+  .hover-red:hover { color: var(--red); }
+  
+  /* Letter spacing utility */
+  .tracking-tightest { letter-spacing: -0.04em; }
+  
+  /* Btn */
+  .btn-primary {
+    background: var(--red);
+    color: var(--white);
+    padding: 14px 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    border: 0;
+    cursor: none;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .btn-primary:hover { background: var(--yellow); color: #000; }
+  
+  .btn-outline {
+    background: transparent;
+    color: var(--white);
+    padding: 14px 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    border: 1px solid var(--gray-3);
+    cursor: none;
+    transition: all 0.2s;
+  }
+  .btn-outline:hover { border-color: var(--white); background: var(--white); color: #000; }
+  
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #000; }
+  ::-webkit-scrollbar-thumb { background: var(--gray-3); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--red); }
+  
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--yellow);
+    color: #000;
+    padding: 14px 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    z-index: 9999;
+    transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+    border-left: 4px solid var(--red);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  
+  /* Section number */
+  .sec-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 0.2em;
+  }
+  
+  /* Diagonal stripe */
+  .stripes {
+    background-image: repeating-linear-gradient(
+      45deg,
+      var(--red) 0,
+      var(--red) 10px,
+      transparent 10px,
+      transparent 20px
+    );
+  }
+  
+  /* Hide scrollbar on admin */
+  .admin-panel::-webkit-scrollbar { width: 4px; }
+  
+  /* Aspect ratios */
+  .ar-16-9 { aspect-ratio: 16/9; }
+  
+  /* Loading spinner */
+  .spinner {
+    border: 2px solid var(--gray-3);
+    border-top-color: var(--red);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  /* Mobile nav */
+  .mobile-menu { display: none; }
+  @media (max-width: 768px) {
+    .desktop-nav { display: none; }
+    .mobile-menu { display: flex; }
+  }
+</style>
+</head>
+<body class="antialiased">
+
+<!-- Film grain overlay -->
+<div class="grain"></div>
+
+<!-- Custom cursor -->
+<div class="cursor" id="cursor"></div>
+
+<!-- Top marquee ticker -->
+<div class="bg-[#ff1f1f] text-black py-2 overflow-hidden relative z-40">
+  <div class="marquee">
+    <div class="marquee-track font-mono text-xs font-bold uppercase tracking-widest">
+      <span class="mx-8">● Live: New teardown dropping Sunday</span>
+      <span class="mx-8">★ 248 videos in the archive</span>
+      <span class="mx-8">▲ 12,400 subscribers strong</span>
+      <span class="mx-8">◆ No sponsored fluff. Ever.</span>
+      <span class="mx-8">● Live: New teardown dropping Sunday</span>
+      <span class="mx-8">★ 248 videos in the archive</span>
+      <span class="mx-8">▲ 12,400 subscribers strong</span>
+      <span class="mx-8">◆ No sponsored fluff. Ever.</span>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="fixed top-8 left-0 right-0 z-40 px-6 md:px-10">
+  <div class="flex items-center justify-between bg-black/70 backdrop-blur-md border border-[#2a2a2a] px-5 py-3">
+    <a href="#top" class="flex items-center gap-3 group">
+      <div class="w-9 h-9 bg-[#ff1f1f] flex items-center justify-center font-display text-xl text-white">D</div>
+      <div class="hidden md:block">
+        <div class="font-display text-lg leading-none">DEEP DIVE</div>
+        <div class="font-mono text-[9px] text-[#888] tracking-widest mt-0.5">L2E · BANGLADESH</div>
+      </div>
+    </a>
+    
+    <div class="desktop-nav hidden md:flex items-center gap-8 font-mono text-xs uppercase tracking-widest">
+      <a href="#library" class="hover-red">Library</a>
+      <a href="#reviews" class="hover-red">Reviews</a>
+      <a href="#recommendations" class="hover-red">Picks</a>
+      <a href="#newsletter" class="hover-red">Newsletter</a>
+      <a href="https://learning-to-earning-bangladesh.vercel.app" target="_blank" class="hover-red text-[#00d4ff]">L2E ↗</a>
+    </div>
+    
+    <div class="flex items-center gap-3">
+      <button onclick="openAdmin()" class="font-mono text-[10px] uppercase tracking-widest text-[#888] hover:text-[#f0ff00] transition flex items-center gap-2">
+        <span class="w-1.5 h-1.5 bg-[#f0ff00] rounded-full animate-pulse"></span>
+        Admin
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="top" class="relative pt-32 pb-12 px-6 md:px-10" data-tint="">
+  <div class="max-w-[1600px] mx-auto">
+    
+    <!-- Top meta strip -->
+    <div class="flex flex-wrap items-end justify-between mb-6 gap-4">
+      <div class="flex items-center gap-6">
+        <span class="sec-num">SEC.01 / HERO</span>
+        <span class="font-mono text-xs text-[#888] uppercase tracking-widest">Latest Transmission</span>
+      </div>
+      <div class="font-mono text-xs text-[#888] flex items-center gap-4">
+        <span class="flex items-center gap-2"><span class="w-2 h-2 bg-[#ff1f1f] rounded-full animate-pulse"></span>REC · 04:32</span>
+        <span>EST. 2024</span>
+      </div>
+    </div>
+    
+    <!-- Massive title -->
+    <div class="mb-8">
+      <h1 class="font-display text-[14vw] md:text-[11vw] leading-[0.85] tracking-tightest">
+        <span class="block">TECH THAT</span>
+        <span class="block">
+          <span class="text-[#ff1f1f]">EARNS</span> ITS
+        </span>
+        <span class="block">KEEP<span class="text-[#f0ff00]">.</span></span>
+      </h1>
+    </div>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Hero video (spans 2) -->
+      <div class="lg:col-span-2 letterbox scanlines bg-black border border-[#2a2a2a] group relative" id="hero-video-wrap">
+        <div class="ar-16-9 relative overflow-hidden">
+          <img id="hero-thumb" src="https://picsum.photos/seed/herotech1/1280/720.jpg" alt="" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" style="filter:saturate(0.85) contrast(1.1);">
+          <iframe id="hero-preview" class="absolute inset-0 w-full h-full opacity-0 transition-opacity duration-500 pointer-events-none" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+          
+          <!-- Overlay -->
+          <div class="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none"></div>
+          
+          <!-- Top badges -->
+          <div class="absolute top-6 left-6 right-6 flex justify-between items-start z-10">
+            <div class="flex gap-2">
+              <span class="bg-[#ff1f1f] px-2 py-1 font-mono text-[10px] uppercase tracking-widest">● Latest</span>
+              <span class="bg-black/60 border border-[#2a2a2a] px-2 py-1 font-mono text-[10px] uppercase tracking-widest" id="hero-cat">Reviews</span>
+            </div>
+            <span class="font-mono text-[10px] uppercase tracking-widest bg-black/60 px-2 py-1" id="hero-duration">14:32</span>
+          </div>
+          
+          <!-- Bottom info -->
+          <div class="absolute bottom-0 left-0 right-0 p-6 z-10">
+            <h2 id="hero-title" class="font-display text-3xl md:text-5xl mb-2">The $400 Phone That Kills $1000 Flagships.</h2>
+            <p id="hero-desc" class="text-sm text-[#aaa] max-w-2xl mb-4">Two weeks with the nothing phone. Honest verdict on camera, battery, software, and whether the hype is real.</p>
+            <div class="flex items-center gap-4 font-mono text-xs">
+              <button class="bg-[#ff1f1f] hover:bg-[#f0ff00] hover:text-black px-5 py-2.5 uppercase tracking-widest transition flex items-center gap-2">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                Watch Now
+              </button>
+              <span class="text-[#888]">2.4K views · 3 days ago</span>
+            </div>
+          </div>
+          
+          <!-- Hover hint -->
+          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+            <div class="font-mono text-xs uppercase tracking-widest text-[#f0ff00] bg-black/70 px-3 py-1.5">▸ Hover to preview</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Side panel -->
+      <div class="flex flex-col gap-4">
+        <!-- Portrait card -->
+        <div class="relative bg-[#141414] border border-[#2a2a2a] p-5 overflow-hidden">
+          <div class="absolute top-0 right-0 w-24 h-24 stripes opacity-20"></div>
+          <div class="flex items-start gap-4">
+            <div class="w-16 h-16 bg-gradient-to-br from-[#ff1f1f] to-[#c80000] flex items-center justify-center font-display text-3xl">M</div>
+            <div class="flex-1">
+              <div class="font-mono text-[10px] text-[#888] uppercase tracking-widest mb-1">The Host</div>
+              <div class="font-display text-xl">MONJURUL</div>
+              <div class="text-xs text-[#aaa] mt-1">Tech analyst · Dhaka</div>
+            </div>
+          </div>
+          <p class="text-sm text-[#aaa] mt-4 leading-relaxed">
+            "I tear down the spec sheets, ignore the marketing, and tell you what's actually worth your money."
+          </p>
+          <div class="flex gap-2 mt-4 font-mono text-[10px] uppercase tracking-widest">
+            <span class="px-2 py-1 border border-[#2a2a2a]">12.4K subs</span>
+            <span class="px-2 py-1 border border-[#2a2a2a]">248 videos</span>
+          </div>
+        </div>
+        
+        <!-- Now playing list -->
+        <div class="bg-[#141414] border border-[#2a2a2a] p-5 flex-1">
+          <div class="flex items-center justify-between mb-4">
+            <span class="font-mono text-[10px] uppercase tracking-widest text-[#888]">Up Next</span>
+            <span class="font-mono text-[10px] text-[#f0ff00]">QUEUE_03</span>
+          </div>
+          <div class="space-y-3" id="up-next-list">
+            <!-- Filled by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Stats bar -->
+    <div class="mt-12 grid grid-cols-2 md:grid-cols-4 gap-0 border border-[#2a2a2a] bg-[#0a0a0a]">
+      <div class="p-6 border-r border-[#2a2a2a]">
+        <div class="font-display text-4xl md:text-5xl">248</div>
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mt-1">Videos Published</div>
+      </div>
+      <div class="p-6 border-r border-[#2a2a2a]">
+        <div class="font-display text-4xl md:text-5xl text-[#ff1f1f]">12.4K</div>
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mt-1">Subscribers</div>
+      </div>
+      <div class="p-6 border-r border-[#2a2a2a]">
+        <div class="font-display text-4xl md:text-5xl text-[#00d4ff]">1.2M</div>
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mt-1">Total Views</div>
+      </div>
+      <div class="p-6">
+        <div class="font-display text-4xl md:text-5xl text-[#f0ff00]">4.9★</div>
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mt-1">Avg. Rating</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Marquee divider -->
+<div class="bg-[#f0ff00] text-black py-3 overflow-hidden border-y border-black">
+  <div class="marquee">
+    <div class="marquee-track font-display text-2xl uppercase" style="--duration: 25s;">
+      <span class="mx-6">DEEP DIVE</span><span class="mx-6 text-[#ff1f1f]">●</span>
+      <span class="mx-6">NO SPONSORED FLUFF</span><span class="mx-6 text-[#ff1f1f]">●</span>
+      <span class="mx-6">REAL BATTERY TESTS</span><span class="mx-6 text-[#ff1f1f]">●</span>
+      <span class="mx-6">HONEST VERDICTS</span><span class="mx-6 text-[#ff1f1f]">●</span>
+      <span class="mx-6">DEEP DIVE</span><span class="mx-6 text-[#ff1f1f]">●</span>
+      <span class="mx-6">NO SPONSORED FLUFF</span><span class="mx-6 text-[#ff1f1f]">●</span>
+      <span class="mx-6">REAL BATTERY TESTS</span><span class="mx-6 text-[#ff1f1f]">●</span>
+      <span class="mx-6">HONEST VERDICTS</span><span class="mx-6 text-[#ff1f1f]">●</span>
+    </div>
+  </div>
+</div>
+
+<!-- VIDEO LIBRARY -->
+<section id="library" class="py-20 px-6 md:px-10" data-tint="tint-red">
+  <div class="max-w-[1600px] mx-auto">
+    
+    <div class="flex flex-wrap items-end justify-between mb-8 gap-4">
+      <div>
+        <span class="sec-num">SEC.02 / ARCHIVE</span>
+        <h2 class="font-display text-6xl md:text-8xl mt-2">THE<br>LIBRARY.</h2>
+      </div>
+      <div class="text-right">
+        <div class="font-mono text-xs text-[#888] uppercase tracking-widest">Filter by category</div>
+        <div class="font-mono text-[10px] text-[#666] mt-1">↓ Click to shuffle</div>
+      </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="flex flex-wrap gap-2 mb-10" id="filter-bar">
+      <button class="filter-pill active" data-filter="all">All <span class="opacity-50 ml-1" id="count-all">0</span></button>
+      <button class="filter-pill" data-filter="Reviews">Reviews</button>
+      <button class="filter-pill" data-filter="Tutorials">Tutorials</button>
+      <button class="filter-pill" data-filter="Builds">Builds</button>
+      <button class="filter-pill" data-filter="News">News</button>
+      <button class="filter-pill" data-filter="Vlogs">Vlogs</button>
+    </div>
+    
+    <!-- Video grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" id="video-grid">
+      <!-- Filled by JS -->
+    </div>
+    
+    <div class="mt-10 text-center">
+      <button class="btn-outline" onclick="loadMoreVideos()">Load More From Archive</button>
+    </div>
+  </div>
+</section>
+
+<!-- Marquee -->
+<div class="bg-black border-y border-[#2a2a2a] py-2 overflow-hidden">
+  <div class="marquee">
+    <div class="marquee-track font-mono text-xs uppercase tracking-widest text-[#888]" style="--duration: 35s;">
+      <span class="mx-8">▸ DEEP DIVE WRITTEN COMPANIONS</span>
+      <span class="mx-8">▸ 5,000+ WORDS PER REVIEW</span>
+      <span class="mx-8">▸ READ ALONG WHILE YOU WATCH</span>
+      <span class="mx-8">▸ NO PAYWALLS</span>
+      <span class="mx-8">▸ DEEP DIVE WRITTEN COMPANIONS</span>
+      <span class="mx-8">▸ 5,000+ WORDS PER REVIEW</span>
+      <span class="mx-8">▸ READ ALONG WHILE YOU WATCH</span>
+      <span class="mx-8">▸ NO PAYWALLS</span>
+    </div>
+  </div>
+</div>
+
+<!-- WRITTEN REVIEWS -->
+<section id="reviews" class="py-20 px-6 md:px-10" data-tint="tint-blue">
+  <div class="max-w-[1600px] mx-auto">
+    
+    <div class="flex flex-wrap items-end justify-between mb-10 gap-4">
+      <div>
+        <span class="sec-num">SEC.03 / LONG-FORM</span>
+        <h2 class="font-display text-6xl md:text-8xl mt-2">WRITTEN<br><span class="text-[#00d4ff]">COMPANIONS.</span></h2>
+      </div>
+      <p class="max-w-md text-sm text-[#aaa]">
+        Every video gets a 5,000-word companion. Spec breakdowns, benchmark methodology, and verdicts you can reference. Read along while the video plays.
+      </p>
+    </div>
+    
+    <!-- Review selector tabs -->
+    <div class="flex gap-2 mb-8 overflow-x-auto pb-2" id="review-tabs">
+      <!-- Filled by JS -->
+    </div>
+    
+    <!-- Review content with sticky video -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-10" id="review-display">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- Marquee -->
+<div class="bg-[#00d4ff] text-black py-2 overflow-hidden">
+  <div class="marquee">
+    <div class="marquee-track font-mono text-xs font-bold uppercase tracking-widest" style="--duration: 30s;">
+      <span class="mx-8">★ WHAT I'D BUY AT $100</span>
+      <span class="mx-8">★ $250 SWEET SPOT</span>
+      <span class="mx-8">★ $500 PREMIUM PICKS</span>
+      <span class="mx-8">★ $1000 NO REGRETS</span>
+      <span class="mx-8">★ WHAT I'D BUY AT $100</span>
+      <span class="mx-8">★ $250 SWEET SPOT</span>
+      <span class="mx-8">★ $500 PREMIUM PICKS</span>
+      <span class="mx-8">★ $1000 NO REGRETS</span>
+    </div>
+  </div>
+</div>
+
+<!-- RECOMMENDATIONS -->
+<section id="recommendations" class="py-20 px-6 md:px-10" data-tint="tint-yellow">
+  <div class="max-w-[1600px] mx-auto">
+    
+    <div class="flex flex-wrap items-end justify-between mb-10 gap-4">
+      <div>
+        <span class="sec-num">SEC.04 / PICKS</span>
+        <h2 class="font-display text-6xl md:text-8xl mt-2">WHAT I'D BUY<br>AT $<span class="text-[#f0ff00]">___</span></h2>
+      </div>
+      <p class="max-w-md text-sm text-[#aaa]">
+        Drag the slider. Cards re-sort in real-time. These are the exact models I'd spend my own money on — no affiliate padding.
+      </p>
+    </div>
+    
+    <!-- Price slider -->
+    <div class="bg-[#141414] border border-[#2a2a2a] p-6 md:p-8 mb-10">
+      <div class="flex flex-wrap items-end justify-between mb-6 gap-4">
+        <div>
+          <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-2">Budget Range</div>
+          <div class="font-display text-4xl md:text-6xl">
+            $<span id="price-min-display">0</span>
+            <span class="text-[#666] mx-2">—</span>
+            $<span id="price-max-display">2000</span>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="font-mono text-[10px] uppercase tracking-widest text-[#888]">Showing</div>
+          <div class="font-display text-3xl text-[#f0ff00]" id="rec-count">0</div>
+          <div class="font-mono text-[10px] uppercase tracking-widest text-[#888]">picks in range</div>
+        </div>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <div class="flex justify-between font-mono text-[10px] uppercase tracking-widest text-[#888] mb-2">
+            <span>Min: $<span id="min-label">0</span></span>
+            <span>Max: $<span id="max-label">2000</span></span>
+          </div>
+          <input type="range" min="0" max="2000" value="0" step="50" class="price-slider" id="price-min">
+          <input type="range" min="0" max="2000" value="2000" step="50" class="price-slider mt-2" id="price-max">
+        </div>
+      </div>
+    </div>
+    
+    <!-- Recommendation grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5" id="rec-grid">
+      <!-- Filled by JS -->
+    </div>
+  </div>
+</section>
+
+<!-- NEWSLETTER -->
+<section id="newsletter" class="py-24 px-6 md:px-10 relative overflow-hidden" data-tint="">
+  <!-- BG glitch text -->
+  <div class="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.04]">
+    <div class="font-display text-[40vw] leading-none">SIGNAL</div>
+  </div>
+  
+  <div class="max-w-[1200px] mx-auto relative">
+    <div class="text-center mb-10">
+      <span class="sec-num">SEC.05 / DIRECT LINE</span>
+      <h2 class="font-display text-6xl md:text-9xl mt-2 leading-[0.85]">
+        JOIN THE<br><span class="text-[#ff1f1f] glitch" data-text="SIGNAL.">SIGNAL.</span>
+      </h2>
+      <p class="text-[#aaa] mt-6 max-w-xl mx-auto">
+        Weekly teardown every Sunday. No spam, no affiliate links, no sponsored takes. Just signal.
+      </p>
+    </div>
+    
+    <form id="newsletter-form" class="max-w-2xl mx-auto">
+      <div class="relative">
+        <input
+          type="email"
+          id="email-input"
+          required
+          class="w-full bg-transparent border-b-2 border-[#2a2a2a] focus:border-[#ff1f1f] py-5 pl-2 pr-44 font-mono text-lg outline-none transition-colors"
+          autocomplete="off"
+        >
+        <label for="email-input" class="absolute left-2 top-5 font-mono text-lg text-[#666] pointer-events-none transition-all" id="email-label">
+          <span id="typewriter-text"></span><span class="caret"></span>
+        </label>
+        <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 btn-primary text-xs">
+          Subscribe →
+        </button>
+      </div>
+      <div class="flex flex-wrap justify-between mt-4 font-mono text-[10px] uppercase tracking-widest text-[#666]">
+        <span>▸ 12,400+ readers</span>
+        <span>▸ Unsubscribe anytime</span>
+        <span>▸ No data sold, ever</span>
+      </div>
+    </form>
+    
+    <!-- Patreon style support -->
+    <div class="mt-16 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+      <div class="bg-[#141414] border border-[#2a2a2a] p-6 hover:border-[#ff1f1f] transition">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-2">Tier 01</div>
+        <div class="font-display text-3xl text-[#f0ff00]">$3<span class="text-sm text-[#888]">/mo</span></div>
+        <div class="text-sm text-[#aaa] mt-3">Name in credits. Early access to written companions.</div>
+      </div>
+      <div class="bg-[#141414] border border-[#ff1f1f] p-6 relative">
+        <div class="absolute -top-3 left-6 bg-[#ff1f1f] px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest">Most Popular</div>
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-2">Tier 02</div>
+        <div class="font-display text-3xl text-[#f0ff00]">$8<span class="text-sm text-[#888]">/mo</span></div>
+        <div class="text-sm text-[#aaa] mt-3">All previous + monthly Q&A stream + voting power on next reviews.</div>
+      </div>
+      <div class="bg-[#141414] border border-[#2a2a2a] p-6 hover:border-[#ff1f1f] transition">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-2">Tier 03</div>
+        <div class="font-display text-3xl text-[#f0ff00]">$20<span class="text-sm text-[#888]">/mo</span></div>
+        <div class="text-sm text-[#aaa] mt-3">All previous + 1-on-1 buying consultation per quarter.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-black border-t border-[#2a2a2a] px-6 md:px-10 py-16">
+  <div class="max-w-[1600px] mx-auto">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-10">
+      
+      <div class="md:col-span-5">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="w-12 h-12 bg-[#ff1f1f] flex items-center justify-center font-display text-2xl">D</div>
+          <div>
+            <div class="font-display text-2xl">DEEP DIVE</div>
+            <div class="font-mono text-[10px] text-[#888] uppercase tracking-widest">By Learning To Earning Bangladesh</div>
+          </div>
+        </div>
+        <p class="text-sm text-[#aaa] max-w-md mb-6">
+          High-production tech reviews, deep-dive written companions, and opinionated buying guides. Made in Bangladesh for the world.
+        </p>
+        <div class="flex flex-wrap gap-3 font-mono text-[10px] uppercase tracking-widest">
+          <a href="tel:01715247588" class="border border-[#2a2a2a] px-3 py-2 hover-red">📞 01715247588</a>
+          <a href="mailto:monjurul.jusc@gmail.com" class="border border-[#2a2a2a] px-3 py-2 hover-red">✉ monjurul.jusc@gmail.com</a>
+        </div>
+      </div>
+      
+      <div class="md:col-span-3">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-4">Navigate</div>
+        <ul class="space-y-2 text-sm">
+          <li><a href="#library" class="hover-red">Video Library</a></li>
+          <li><a href="#reviews" class="hover-red">Written Reviews</a></li>
+          <li><a href="#recommendations" class="hover-red">Buying Guides</a></li>
+          <li><a href="#newsletter" class="hover-red">Newsletter</a></li>
+        </ul>
+      </div>
+      
+      <div class="md:col-span-4">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-4">Network</div>
+        <a href="https://learning-to-earning-bangladesh.vercel.app" target="_blank" class="block group">
+          <div class="border border-[#2a2a2a] p-4 hover:border-[#00d4ff] transition">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-xs font-mono uppercase tracking-widest text-[#888]">Parent Project</div>
+                <div class="font-display text-lg mt-1">Learning To Earning</div>
+                <div class="text-xs text-[#00d4ff] mt-1">learning-to-earning-bangladesh.vercel.app ↗</div>
+              </div>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+    
+    <div class="div-line my-10"></div>
+    
+    <div class="flex flex-wrap justify-between items-center gap-4 font-mono text-[10px] uppercase tracking-widest text-[#666]">
+      <div>© 2024 Deep Dive · Learning To Earning Bangladesh. All transmissions reserved.</div>
+      <div class="flex items-center gap-4">
+        <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-[#ff1f1f] rounded-full animate-pulse"></span>System Online</span>
+        <span>Built in Dhaka</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ADMIN PANEL -->
+<div class="admin-panel" id="admin-panel">
+  <div id="admin-content">
+    <!-- Filled by JS -->
+  </div>
+</div>
+
+<!-- Admin backdrop -->
+<div id="admin-backdrop" class="fixed inset-0 bg-black/60 z-30 hidden" onclick="closeAdmin()"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast">Saved</div>
+
+<script>
+/* ============================================
+   FIREBASE INIT
+   ============================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyAN1spaxr2PZdY4LZLr_powVbDBSMzKsuY",
+  authDomain: "blog-653a6.firebaseapp.com",
+  projectId: "blog-653a6",
+  storageBucket: "blog-653a6.firebasestorage.app",
+  messagingSenderId: "893963565990",
+  appId: "1:893963565990:web:38605f15f4f29c293cad67",
+  measurementId: "G-K3KK84N5YB"
+};
+
+let db = null;
+let useFallback = false;
+
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+} catch (e) {
+  console.warn('Firebase init failed, using fallback:', e);
+  useFallback = true;
+}
+
+/* ============================================
+   DEFAULT DATA (fallback / seed)
+   ============================================ */
+const DEFAULT_VIDEOS = [
+  { id: 'v1', title: 'The $400 Phone That Kills $1000 Flagships', category: 'Reviews', youtubeId: 'dQw4w9WgXcQ', thumb: 'https://picsum.photos/seed/phone1/640/360.jpg', duration: '14:32', desc: 'Two weeks with the budget king. Honest verdict on camera, battery, software.', views: '2.4K', date: '3 days ago', featured: true },
+  { id: 'v2', title: 'Building a $800 Editing Beast — Full PC Build', category: 'Builds', youtubeId: 'dQw4w9WgXcQ', thumb: 'https://picsum.photos/seed/pcbuild/640/360.jpg', duration: '22:18', desc: 'Step-by-step build with benchmark results vs $2000 prebuilts.', views: '8.1K', date: '1 week ago' },
+  { id: 'v3', title: 'I Tested 7 Mechanical Keyboards So You Do Not Have To', category: 'Reviews', youtubeId: 'dQw4w9WgXcQ', thumb: 'https://picsum.photos/seed/keyboard/640/360.jpg', duration: '18:45', desc: 'Click, thock, clack. Sound tests, switch analysis, value picks.', views: '5.6K', date: '2 weeks ago' },
+  { id: 'v4', title: 'Why I Switched From iPhone to Pixel (And Regret It)', category: 'Vlogs', youtubeId: 'dQw4w9WgXcQ', thumb: 'https://picsum.photos/seed/pixel/640/360.jpg', duration: '11:02', desc: '30 days later. The good, the bad, the dealbreakers.', views: '12.3K', date: '3 weeks ago' },
+  { id: 'v5', title: 'Tutorial: Color Grade Like a Movie in DaVinci Resolve', category: 'Tutorials', youtubeId: 'dQw4w9WgXcQ', thumb: 'https://picsum.photos/seed/grade/640/360.jpg', duration: '27:33', desc: 'Cinematic look in 8 steps. Free LUTs included.', views: '15.2K', date: '1 month ago' },
+  { id: 'v6', title: 'Apple Just Killed the MacBook Air Line. Here Is Why.', category: 'News', youtubeId: 'dQw4w9WgXcQ', thumb: 'https://picsum.photos/seed/macbook/640/360.jpg', duration: '08:14', desc: 'Breaking down the M4 announcement and what it means for buyers.', views: '6.7K', date: '1 month ago' },
+  { id: 'v7', title: 'The Truth About Budget IEMs (Under $50)', category: 'Reviews', youtubeId: 'dQw4w9WgXcQ', thumb: 'https://picsum.photos/seed/iem/640/360.jpg', duration: '13:41', desc: 'Salnotes Zero, Truthear Gate, Moondrop Chu II — ranked.', views: '4.2K', date: '6 weeks ago' },
+  { id: 'v8', title: 'How I Edit Videos 3x Faster: My Full Workflow', category: 'Tutorials', youtubeId: 'dQw4w9WgXcQ', thumb: 'https://picsum.photos/seed/edit/640/360.jpg', duration: '19:55', desc: 'Proxy workflow, plugins, keyboard shortcuts that actually save time.', views: '9.8K', date: '2 months ago' },
+];
+
+const DEFAULT_REVIEWS = [
+  {
+    id: 'r1',
+    title: 'Nothing Phone (2a) — The Full written Teardown',
+    excerpt: 'A 5,200-word deep dive into the budget phone that punches above its weight.',
+    youtubeId: 'dQw4w9WgXcQ',
+    readTime: '18 min read',
+    tags: ['Smartphones', 'Budget', 'Android'],
+    date: 'Oct 28, 2024',
+    content: `## The Pitch
+
+The Nothing Phone (2a) arrives at $349 with a dimensity 7250 Pro, 50MP dual camera, and the signature Glyph interface. The pitch is simple: flagship feel at mid-range price. After 14 days of daily use, here is the unvarnished truth.
+
+## Build & Design
+
+Nothing continues to nail the industrial design language. The transparent back, while divisive, feels premium in hand. The plastic frame is the obvious cost-cutting measure, but the matte finish masks it well. At 190g, it is lighter than the Phone (2) and noticeably more comfortable for extended use.
+
+The Glyph interface on the back remains a party trick, but Nothing has expanded its utility — ride-share alerts, charging status, and notification tiers are genuinely useful. Whether you care about it is personal taste, but it is no longer just for show.
+
+## Display
+
+6.7" AMOLED, 120Hz, 2000 nits peak. Those are flagship numbers in a budget phone. Color accuracy out of the box leans slightly cool (7400K), but the True Tone equivalent brings it back to neutral after a few days of learning.
+
+In direct sunlight the display holds up better than expected. Brightness ramps aggressively and the anti-reflective coating is surprisingly effective. At this price point, this is a top-three display.
+
+## Performance
+
+The Dimensity 7250 Pro is not a flagship chip, and it does not pretend to be. But Nothing's software optimization is exceptional. Day-to-day, the phone feels as snappy as my Pixel 8 Pro. App launches are quick, animations are fluid, and the 120Hz refresh rate is consistent.
+
+Gaming tells a different story. Genshin Impact on high averages 38fps with frame dips in dense scenes. PUBG Mobile on HD/HDR runs at a stable 60fps. This is not a gaming phone, but it handles casual titles without complaint.
+
+## Camera
+
+Two 50MP sensors — main and ultrawide. No telephoto, no macro filler. The main sensor is the GN9, and in good light it produces excellent results. Dynamic range is wider than expected, and Nothing's processing has improved significantly since the Phone (1).
+
+Low light is where the budget shows. Night mode introduces noticeable noise reduction smearing, and autofocus hunting is more pronounced than on flagships. But for the price, the camera punches well above its weight.
+
+## Battery
+
+5000mAh, 45W charging, no charger in the box. Real-world battery life averaged 7 hours of screen-on time across my two weeks of testing. That is excellent for any phone, let alone one at this price.
+
+Charging speeds are the compromise. 0-50% takes 25 minutes, 0-100% takes 65 minutes. For comparison, the Phone (2) at 45W completes the same cycle in 55 minutes. The difference is thermal throttling — Nothing has been conservative here to preserve battery longevity.
+
+## Verdict
+
+The Nothing Phone (2a) is the budget phone I would recommend without hesitation. It is not perfect — the camera struggles in low light, charging is slower than competitors, and the plastic frame will scratch. But at $349, you are getting a flagship-tier display, excellent battery life, clean software, and a design that stands out in a sea of black slabs.
+
+If you are spending $400 or less on a phone in 2024, this is the one.`
+  },
+  {
+    id: 'r2',
+    title: 'Custom PC Build — $800 Editing Rig: 6-Month Report',
+    excerpt: 'Did the Ryzen 5 7600 + RTX 4060 build hold up? The honest 6-month retrospective.',
+    youtubeId: 'dQw4w9WgXcQ',
+    readTime: '14 min read',
+    tags: ['PC Build', 'Editing', 'Hardware'],
+    date: 'Oct 20, 2024',
+    content: `## The Build Recap
+
+Six months ago, I built a $800 PC for DaVinci Resolve editing. Ryzen 5 7600, RTX 4060 8GB, 32GB DDR5-6000, 1TB NVMe, B650 motherboard, 650W Gold PSU. The goal: 4K timeline playback without proxies.
+
+## Has It Held Up?
+
+In short — yes, surprisingly well. The RTX 4060's 8GB VRAM is the obvious bottleneck, and DaVinci Resolve's GPU memory handling has become more demanding with each update. On a 4K timeline with multiple nodes of color grading, I am now hitting VRAM limits where I was not six months ago.
+
+That said, the CPU has been a revelation. The Ryzen 5 7600 handles 4K proxy-free playback smoothly, and render times have actually improved with software updates. AMD's AM5 platform means I have a clear upgrade path — drop in a 9000-series chip in two years without changing the motherboard.
+
+## What I Would Change
+
+If I were building today with the same budget, I would:
+1. Stretch to the RTX 4060 Ti 16GB if at all possible
+2. Add a second NVMe drive dedicated to cache
+3. Skip RGB entirely (it was a mistake)
+
+## Verdict
+
+The build has earned its keep. At $800 over six months of daily editing, the cost-per-hour-of-use is now under $1. That is exceptional value. The VRAM ceiling is the only real complaint, and that was a known trade-off at purchase time.`
+  },
+  {
+    id: 'r3',
+    title: 'Salnotes Zero 2 vs Truthear Gate vs Moondrop Chu II',
+    excerpt: 'Three $20 IEMs enter. Only one leaves as my daily driver. The full sound breakdown.',
+    youtubeId: 'dQw4w9WgXcQ',
+    readTime: '12 min read',
+    tags: ['Audio', 'IEM', 'Budget'],
+    date: 'Oct 12, 2024',
+    content: `## The Contenders
+
+Three IEMs. All under $25. All widely recommended as the best budget entry point. After three weeks of A/B testing with a Qudelix 5K and a range of tracks, here is the breakdown.
+
+## Sound Signatures
+
+**Salnotes Zero 2:** Neutral with a bass boost. The most "tuning-friendly" of the three — responds well to EQ. Treble is clean if slightly subdued. Soundstage is wider than expected at this price.
+
+**Truthear Gate:** U-shaped. Bass is elevated but controlled, treble has more energy than the Zero 2. Vocals sit slightly back. Easy listening signature, less analytical.
+
+**Moondrop Chu II:** Harman-target tuning. The most "mainstream" sound. Bass hits harder, mids are slightly recessed, treble is present but can get spiky on poorly mastered tracks.
+
+## Verdict
+
+For analytical listening: **Salnotes Zero 2**. For casual listening: **Truthear Gate**. For bass heads: **Moondrop Chu II**.
+
+My daily driver is the Zero 2. The tuning is the most versatile, and EQ takes it wherever I want to go. But honestly, you cannot go wrong with any of these. The fact that $20 buys this level of audio quality is remarkable.`
+  }
+];
+
+const DEFAULT_RECS = [
+  { id: 'rec1', title: 'Salnotes Zero 2 IEM', price: 25, category: 'Audio', image: 'https://picsum.photos/seed/iem1/400/400.jpg', verdict: 'buy', link: '#', note: 'Best $25 you can spend on audio.' },
+  { id: 'rec2', title: 'Nothing Phone (2a)', price: 349, category: 'Phones', image: 'https://picsum.photos/seed/phone2/400/400.jpg', verdict: 'buy', link: '#', note: 'The budget phone champion.' },
+  { id: 'rec3', title: 'Keychron V1 Max', price: 99, category: 'Peripherals', image: 'https://picsum.photos/seed/keeb/400/400.jpg', verdict: 'buy', link: '#', note: 'Best wireless mechanical under $100.' },
+  { id: 'rec4', title: 'Pixel 8a', price: 499, category: 'Phones', image: 'https://picsum.photos/seed/pixel8/400/400.jpg', verdict: 'wait', link: '#', note: 'Wait for Black Friday discount.' },
+  { id: 'rec5', title: 'LG C3 OLED 55"', price: 1299, category: 'Displays', image: 'https://picsum.photos/seed/oled/400/400.jpg', verdict: 'buy', link: '#', note: 'Best TV for mixed use.' },
+  { id: 'rec6', title: 'Anker 737 Power Bank', price: 109, category: 'Accessories', image: 'https://picsum.photos/seed/power/400/400.jpg', verdict: 'buy', link: '#', note: '120W output. Charges laptops.' },
+  { id: 'rec7', title: 'Samsung T7 Shield 1TB', price: 89, category: 'Storage', image: 'https://picsum.photos/seed/ssd/400/400.jpg', verdict: 'buy', link: '#', note: 'Rugged, fast, reliable.' },
+  { id: 'rec8', title: 'Sony WH-1000XM5', price: 399, category: 'Audio', image: 'https://picsum.photos/seed/sony/400/400.jpg', verdict: 'wait', link: '#', note: 'Wait for XM6 launch, price will drop.' },
+  { id: 'rec9', title: 'Razer Viper V3 Pro', price: 159, category: 'Peripherals', image: 'https://picsum.photos/seed/mouse/400/400.jpg', verdict: 'skip', link: '#', note: 'Overpriced. Viper V3 non-Pro is the move.' },
+  { id: 'rec10', title: 'Steam Deck OLED 1TB', price: 649, category: 'Gaming', image: 'https://picsum.photos/seed/steam/400/400.jpg', verdict: 'buy', link: '#', note: 'Best handheld gaming device.' },
+  { id: 'rec11', title: 'Ryobi 18V Drill Kit', price: 79, category: 'Tools', image: 'https://picsum.photos/seed/drill/400/400.jpg', verdict: 'buy', link: '#', note: 'For the DIY PC building corner.' },
+  { id: 'rec12', title: 'Apple Studio Display', price: 1599, category: 'Displays', image: 'https://picsum.photos/seed/studio/400/400.jpg', verdict: 'skip', link: '#', note: 'Overpriced. ASUS PA279CRV is 60% cheaper, 90% as good.' },
+];
+
+/* ============================================
+   STATE
+   ============================================ */
+let allVideos = [];
+let allReviews = [];
+let allRecommendations = [];
+let allSubscribers = [];
+let currentFilter = 'all';
+let currentReviewId = null;
+let isAdmin = false;
+let adminTab = 'videos';
+let editingId = null;
+
+/* ============================================
+   LOAD DATA (Firestore with fallback)
+   ============================================ */
+async function loadData() {
+  if (useFallback || !db) {
+    allVideos = [...DEFAULT_VIDEOS];
+    allReviews = [...DEFAULT_REVIEWS];
+    allRecommendations = [...DEFAULT_RECS];
+    renderAll();
+    return;
+  }
+  
+  try {
+    // Try to load from Firestore
+    const [videosSnap, reviewsSnap, recsSnap, subsSnap] = await Promise.all([
+      db.collection('videos').orderBy('createdAt', 'desc').get().catch(() => ({ docs: [] })),
+      db.collection('reviews').orderBy('createdAt', 'desc').get().catch(() => ({ docs: [] })),
+      db.collection('recommendations').orderBy('createdAt', 'desc').get().catch(() => ({ docs: [] })),
+      db.collection('subscribers').get().catch(() => ({ docs: [] }))
+    ]);
+    
+    allVideos = videosSnap.docs.length > 0 
+      ? videosSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      : [...DEFAULT_VIDEOS];
+    
+    allReviews = reviewsSnap.docs.length > 0
+      ? reviewsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      : [...DEFAULT_REVIEWS];
+    
+    allRecommendations = recsSnap.docs.length > 0
+      ? recsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      : [...DEFAULT_RECS];
+    
+    allSubscribers = subsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    
+    // Set up real-time listeners
+    setupListeners();
+    
+    renderAll();
+  } catch (e) {
+    console.warn('Firestore load failed, using fallback:', e);
+    allVideos = [...DEFAULT_VIDEOS];
+    allReviews = [...DEFAULT_REVIEWS];
+    allRecommendations = [...DEFAULT_RECS];
+    renderAll();
+  }
+}
+
+function setupListeners() {
+  if (!db) return;
+  
+  db.collection('videos').onSnapshot(snapshot => {
+    if (!snapshot.empty) {
+      allVideos = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderVideos();
+      renderHero();
+    }
+  }, err => console.warn('Videos listener error:', err));
+  
+  db.collection('reviews').onSnapshot(snapshot => {
+    if (!snapshot.empty) {
+      allReviews = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderReviews();
+    }
+  }, err => console.warn('Reviews listener error:', err));
+  
+  db.collection('recommendations').onSnapshot(snapshot => {
+    if (!snapshot.empty) {
+      allRecommendations = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderRecommendations();
+    }
+  }, err => console.warn('Recs listener error:', err));
+}
+
+/* ============================================
+   RENDER: HERO
+   ============================================ */
+function renderHero() {
+  const featured = allVideos.find(v => v.featured) || allVideos[0];
+  if (!featured) return;
+  
+  document.getElementById('hero-thumb').src = featured.thumb;
+  document.getElementById('hero-title').textContent = featured.title;
+  document.getElementById('hero-desc').textContent = featured.desc;
+  document.getElementById('hero-cat').textContent = featured.category;
+  document.getElementById('hero-duration').textContent = featured.duration;
+  
+  // Set up hover preview
+  const wrap = document.getElementById('hero-video-wrap');
+  const preview = document.getElementById('hero-preview');
+  
+  wrap.onmouseenter = () => {
+    preview.src = `https://www.youtube.com/embed/${featured.youtubeId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${featured.youtubeId}&modestbranding=1&showinfo=0&rel=0`;
+    preview.style.opacity = '1';
+  };
+  wrap.onmouseleave = () => {
+    preview.src = '';
+    preview.style.opacity = '0';
+  };
+  
+  // Up next list (3 most recent non-featured)
+  const upNext = allVideos.filter(v => v.id !== featured.id).slice(0, 3);
+  document.getElementById('up-next-list').innerHTML = upNext.map(v => `
+    <div class="flex gap-3 group cursor-none" onclick="playVideo('${v.id}')">
+      <div class="w-20 h-12 flex-shrink-0 bg-[#2a2a2a] overflow-hidden relative">
+        <img src="${v.thumb}" class="w-full h-full object-cover" alt="">
+        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-medium truncate group-hover:text-[#ff1f1f] transition">${v.title}</div>
+        <div class="font-mono text-[10px] text-[#666] mt-1">${v.duration} · ${v.views} views</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function playVideo(id) {
+  const v = allVideos.find(x => x.id === id);
+  if (v) {
+    // Scroll to top and load in hero
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      const featured = allVideos.find(x => x.featured);
+      if (featured) {
+        document.getElementById('hero-thumb').src = v.thumb;
+        document.getElementById('hero-title').textContent = v.title;
+        document.getElementById('hero-desc').textContent = v.desc;
+        document.getElementById('hero-cat').textContent = v.category;
+        document.getElementById('hero-duration').textContent = v.duration;
+      }
+    }, 500);
+  }
+}
+
+/* ============================================
+   RENDER: VIDEO LIBRARY
+   ============================================ */
+function renderVideos() {
+  const grid = document.getElementById('video-grid');
+  const filtered = currentFilter === 'all' 
+    ? allVideos 
+    : allVideos.filter(v => v.category === currentFilter);
+  
+  // Update count
+  document.getElementById('count-all').textContent = allVideos.length;
+  
+  grid.innerHTML = filtered.map((v, i) => `
+    <article class="video-card shuffle-item group cursor-none" data-category="${v.category}" data-id="${v.id}" style="animation-delay: ${i * 50}ms">
+      <div class="thumb-wrap scanlines">
+        <img src="${v.thumb}" alt="${v.title}" class="thumb" loading="lazy">
+        <iframe class="preview-frame" data-yt="${v.youtubeId}" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <div class="play-overlay">
+          <div class="play-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+        <div class="absolute top-3 left-3 z-10 flex gap-1.5">
+          <span class="bg-black/70 backdrop-blur px-2 py-0.5 font-mono text-[9px] uppercase tracking-widest border border-[#2a2a2a]">${v.category}</span>
+        </div>
+        <div class="absolute bottom-3 right-3 z-10">
+          <span class="bg-black/80 px-2 py-0.5 font-mono text-[10px]">${v.duration}</span>
+        </div>
+      </div>
+      <div class="p-4">
+        <h3 class="font-display text-lg leading-tight mb-2 group-hover:text-[#ff1f1f] transition">${v.title}</h3>
+        <p class="text-xs text-[#888] line-clamp-2 mb-3">${v.desc}</p>
+        <div class="flex items-center justify-between font-mono text-[10px] text-[#666] uppercase tracking-widest">
+          <span>${v.views} views</span>
+          <span>${v.date}</span>
+        </div>
+      </div>
+    </article>
+  `).join('');
+  
+  // Set up hover previews
+  document.querySelectorAll('.video-card').forEach(card => {
+    const frame = card.querySelector('.preview-frame');
+    const ytId = frame?.dataset.yt;
+    if (!ytId) return;
+    
+    let loadTimeout;
+    card.addEventListener('mouseenter', () => {
+      loadTimeout = setTimeout(() => {
+        frame.src = `https://www.youtube.com/embed/${ytId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${ytId}&modestbranding=1&showinfo=0&rel=0`;
+      }, 300);
+    });
+    card.addEventListener('mouseleave', () => {
+      clearTimeout(loadTimeout);
+      frame.src = '';
+    });
+  });
+}
+
+/* ============================================
+   FILTERS
+   ============================================ */
+document.getElementById('filter-bar').addEventListener('click', e => {
+  if (!e.target.matches('.filter-pill')) return;
+  
+  const newFilter = e.target.dataset.filter;
+  if (newFilter === currentFilter) return;
+  
+  // Update active pill
+  document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+  e.target.classList.add('active');
+  
+  // Shuffle animation
+  document.querySelectorAll('.shuffle-item').forEach(item => {
+    item.classList.add('shuffling');
+  });
+  
+  setTimeout(() => {
+    currentFilter = newFilter;
+    renderVideos();
+    requestAnimationFrame(() => {
+      document.querySelectorAll('.shuffle-item').forEach(item => {
+        item.classList.remove('shuffling');
+      });
+    });
+  }, 300);
+});
+
+function loadMoreVideos() {
+  showToast('Archive fully loaded');
+}
+
+/* ============================================
+   RENDER: REVIEWS
+   ============================================ */
+function renderReviews() {
+  const tabsEl = document.getElementById('review-tabs');
+  const displayEl = document.getElementById('review-display');
+  
+  if (allReviews.length === 0) {
+    tabsEl.innerHTML = '<div class="text-[#666] font-mono text-xs">No reviews yet.</div>';
+    displayEl.innerHTML = '';
+    return;
+  }
+  
+  if (!currentReviewId || !allReviews.find(r => r.id === currentReviewId)) {
+    currentReviewId = allReviews[0].id;
+  }
+  
+  tabsEl.innerHTML = allReviews.map(r => `
+    <button class="admin-tab ${r.id === currentReviewId ? 'active' : ''}" onclick="selectReview('${r.id}')">
+      ${r.title.substring(0, 40)}${r.title.length > 40 ? '…' : ''}
+    </button>
+  `).join('');
+  
+  const review = allReviews.find(r => r.id === currentReviewId);
+  const video = allVideos.find(v => v.youtubeId === review.youtubeId);
+  
+  // Parse simple markdown
+  const html = review.content
+    .split('\n\n')
+    .map(block => {
+      if (block.startsWith('## ')) return `<h3 class="font-display text-2xl mt-8 mb-3 text-[#00d4ff]">${block.slice(3)}</h3>`;
+      if (block.startsWith('# ')) return `<h2 class="font-display text-3xl mt-10 mb-4">${block.slice(2)}</h2>`;
+      if (block.startsWith('**') && block.endsWith('**')) return `<p class="font-bold text-lg my-4">${block.slice(2, -2)}</p>`;
+      return `<p class="text-[#bbb] leading-relaxed mb-4">${block}</p>`;
+    })
+    .join('');
+  
+  displayEl.innerHTML = `
+    <!-- Sticky video -->
+    <div class="sticky-vid self-start">
+      <div class="bg-[#141414] border border-[#2a2a2a]">
+        <div class="ar-16-9 relative bg-black">
+          <iframe src="https://www.youtube.com/embed/${review.youtubeId}?modestbranding=1&rel=0" class="absolute inset-0 w-full h-full" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+        <div class="p-5">
+          <div class="flex items-center gap-2 mb-2">
+            <span class="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse"></span>
+            <span class="font-mono text-[10px] uppercase tracking-widest text-[#00d4ff]">Read-Along Mode</span>
+          </div>
+          <div class="font-mono text-xs text-[#888]">Video plays in sync. Scroll to read.</div>
+        </div>
+        <div class="px-5 pb-5 flex flex-wrap gap-2">
+          ${review.tags.map(t => `<span class="border border-[#2a2a2a] px-2 py-1 font-mono text-[10px] uppercase tracking-widest text-[#888]">${t}</span>`).join('')}
+        </div>
+      </div>
+    </div>
+    
+    <!-- Review content -->
+    <article class="max-w-none">
+      <div class="flex items-center gap-3 mb-4 font-mono text-[10px] uppercase tracking-widest text-[#888]">
+        <span>${review.date}</span>
+        <span class="w-1 h-1 bg-[#666] rounded-full"></span>
+        <span>${review.readTime}</span>
+      </div>
+      <h3 class="font-display text-4xl md:text-5xl leading-tight mb-3">${review.title}</h3>
+      <p class="text-lg text-[#aaa] mb-6 italic border-l-2 border-[#ff1f1f] pl-4">${review.excerpt}</p>
+      <div class="text-base">${html}</div>
+      
+      <div class="mt-10 p-5 bg-[#141414] border border-[#2a2a2a]">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-2">Support more teardowns</div>
+        <div class="flex flex-wrap gap-3">
+          <a href="#newsletter" class="btn-primary text-xs">Join Newsletter</a>
+          <button class="btn-outline text-xs">Share Review</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function selectReview(id) {
+  currentReviewId = id;
+  renderReviews();
+  document.getElementById('reviews').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ============================================
+   RENDER: RECOMMENDATIONS
+   ============================================ */
+function renderRecommendations() {
+  const grid = document.getElementById('rec-grid');
+  
+  grid.innerHTML = allRecommendations.map(r => `
+    <div class="rec-card bg-[#141414] border border-[#2a2a2a] group cursor-none" data-price="${r.price}" data-id="${r.id}">
+      <div class="aspect-square overflow-hidden relative scanlines">
+        <img src="${r.image}" alt="${r.title}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" style="filter:saturate(0.9) contrast(1.05);">
+        <div class="absolute top-3 left-3 z-10">
+          <span class="verdict-${r.verdict} px-2 py-1 font-mono text-[10px] uppercase tracking-widest font-bold">${r.verdict}</span>
+        </div>
+        <div class="absolute top-3 right-3 z-10">
+          <span class="bg-black/70 backdrop-blur px-2 py-1 font-mono text-[10px] uppercase tracking-widest border border-[#2a2a2a]">${r.category}</span>
+        </div>
+      </div>
+      <div class="p-4">
+        <h3 class="font-display text-lg leading-tight mb-2">${r.title}</h3>
+        <p class="text-xs text-[#888] mb-3 min-h-[32px]">${r.note}</p>
+        <div class="flex items-end justify-between">
+          <div>
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#666]">Price</div>
+            <div class="font-display text-2xl text-[#f0ff00]">$${r.price}</div>
+          </div>
+          <a href="${r.link}" class="font-mono text-[10px] uppercase tracking-widest text-[#ff1f1f] hover:text-[#f0ff00] transition">View →</a>
+        </div>
+      </div>
+    </div>
+  `).join('');
+  
+  updateRecFilter();
+}
+
+function updateRecFilter() {
+  const min = parseInt(document.getElementById('price-min').value);
+  const max = parseInt(document.getElementById('price-max').value);
+  
+  document.getElementById('min-label').textContent = min;
+  document.getElementById('max-label').textContent = max;
+  document.getElementById('price-min-display').textContent = min;
+  document.getElementById('price-max-display').textContent = max;
+  
+  let count = 0;
+  document.querySelectorAll('.rec-card').forEach(card => {
+    const price = parseInt(card.dataset.price);
+    if (price >= min && price <= max) {
+      card.classList.remove('filtered-out');
+      count++;
+    } else {
+      card.classList.add('filtered-out');
+    }
+  });
+  
+  document.getElementById('rec-count').textContent = count;
+}
+
+document.getElementById('price-min').addEventListener('input', e => {
+  const min = parseInt(e.target.value);
+  const maxInput = document.getElementById('price-max');
+  if (min > parseInt(maxInput.value)) {
+    maxInput.value = min;
+  }
+  updateRecFilter();
+});
+
+document.getElementById('price-max').addEventListener('input', e => {
+  const max = parseInt(e.target.value);
+  const minInput = document.getElementById('price-min');
+  if (max < parseInt(minInput.value)) {
+    minInput.value = max;
+  }
+  updateRecFilter();
+});
+
+/* ============================================
+   TYPEWRITER PLACEHOLDER
+   ============================================ */
+const TYPEWRITER_PHRASES = [
+  'your@email.com',
+  'enter your inbox for signal',
+  'no spam. just teardowns.',
+  'weekly deep dives. sunday mornings.',
+  'unsubscribe with one click.'
+];
+let twIndex = 0;
+let twChar = 0;
+let twDeleting = false;
+
+function tickTypewriter() {
+  const el = document.getElementById('typewriter-text');
+  if (!el) return;
+  
+  const phrase = TYPEWRITER_PHRASES[twIndex];
+  
+  if (!twDeleting) {
+    twChar++;
+    el.textContent = phrase.substring(0, twChar);
+    if (twChar === phrase.length) {
+      twDeleting = true;
+      setTimeout(tickTypewriter, 2200);
+      return;
+    }
+    setTimeout(tickTypewriter, 60 + Math.random() * 60);
+  } else {
+    twChar--;
+    el.textContent = phrase.substring(0, twChar);
+    if (twChar === 0) {
+      twDeleting = false;
+      twIndex = (twIndex + 1) % TYPEWRITER_PHRASES.length;
+      setTimeout(tickTypewriter, 400);
+      return;
+    }
+    setTimeout(tickTypewriter, 30);
+  }
+}
+
+// Hide label when typing
+document.getElementById('email-input').addEventListener('input', e => {
+  const label = document.getElementById('email-label');
+  if (e.target.value.length > 0) {
+    label.style.opacity = '0';
+  } else {
+    label.style.opacity = '1';
+  }
+});
+
+document.getElementById('email-input').addEventListener('focus', e => {
+  document.getElementById('email-label').style.color = '#666';
+});
+
+/* ============================================
+   NEWSLETTER SUBMIT
+   ============================================ */
+document.getElementById('newsletter-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = document.getElementById('email-input').value;
+  
+  if (db) {
+    try {
+      await db.collection('subscribers').add({
+        email,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch (err) {
+      console.warn('Subscribe save failed:', err);
+    }
+  }
+  
+  allSubscribers.push({ email, createdAt: new Date() });
+  showToast(`✓ You are in. Check ${email}`);
+  document.getElementById('email-input').value = '';
+  document.getElementById('email-label').style.opacity = '1';
+});
+
+/* ============================================
+   TOAST
+   ============================================ */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/* ============================================
+   CUSTOM CURSOR
+   ============================================ */
+const cursor = document.getElementById('cursor');
+let mouseX = 0, mouseY = 0;
+let cursorX = 0, cursorY = 0;
+
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+});
+
+function animateCursor() {
+  cursorX += (mouseX - cursorX) * 0.2;
+  cursorY += (mouseY - cursorY) * 0.2;
+  cursor.style.left = cursorX + 'px';
+  cursor.style.top = cursorY + 'px';
+  requestAnimationFrame(animateCursor);
+}
+animateCursor();
+
+document.addEventListener('mouseover', e => {
+  if (e.target.matches('a, button, input, .video-card, .rec-card, .filter-pill, [onclick]')) {
+    cursor.classList.add('expand');
+  }
+});
+document.addEventListener('mouseout', e => {
+  if (e.target.matches('a, button, input, .video-card, .rec-card, .filter-pill, [onclick]')) {
+    cursor.classList.remove('expand');
+  }
+});
+
+/* ============================================
+   SCROLL COLOR SHIFTS
+   ============================================ */
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const tint = entry.target.dataset.tint;
+      document.body.classList.remove('tint-red', 'tint-blue', 'tint-yellow');
+      if (tint) document.body.classList.add(tint);
+    }
+  });
+}, { threshold: 0.4 });
+
+document.querySelectorAll('[data-tint]').forEach(s => observer.observe(s));
+
+/* ============================================
+   ADMIN PANEL
+   ============================================ */
+function openAdmin() {
+  document.getElementById('admin-panel').classList.add('open');
+  document.getElementById('admin-backdrop').classList.remove('hidden');
+  renderAdmin();
+}
+
+function closeAdmin() {
+  document.getElementById('admin-panel').classList.remove('open');
+  document.getElementById('admin-backdrop').classList.add('hidden');
+  editingId = null;
+}
+
+const ADMIN_PASSWORD = 'deepdive2024'; // Default - can be changed in settings
+
+function renderAdmin() {
+  const content = document.getElementById('admin-content');
+  
+  if (!isAdmin) {
+    content.innerHTML = `
+      <div class="p-8 min-h-screen flex flex-col">
+        <div class="flex items-center justify-between mb-12">
+          <div>
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#888]">Admin Access</div>
+            <div class="font-display text-3xl mt-1">DEEP DIVE CTRL</div>
+          </div>
+          <button onclick="closeAdmin()" class="font-mono text-xs uppercase tracking-widest text-[#888] hover:text-white">✕ Close</button>
+        </div>
+        
+        <div class="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
+          <div class="mb-6">
+            <div class="w-16 h-16 bg-[#ff1f1f] flex items-center justify-center font-display text-3xl mb-4">⚠</div>
+            <h2 class="font-display text-2xl mb-2">RESTRICTED ZONE</h2>
+            <p class="text-sm text-[#888]">Enter the admin passphrase to access content controls.</p>
+          </div>
+          
+          <form onsubmit="loginAdmin(event)" class="space-y-4">
+            <input type="password" id="admin-pass" class="admin-input w-full" placeholder="Passphrase" autofocus>
+            <button type="submit" class="btn-primary w-full justify-center">Authenticate →</button>
+          </form>
+          
+          <div class="mt-8 p-4 border border-[#2a2a2a] font-mono text-[10px] text-[#666] leading-relaxed">
+            <div class="text-[#f0ff00] mb-1">DEFAULT PASS:</div>
+            deepdive2024<br>
+            <span class="text-[#888] mt-2 block">Change it from Settings after login.</span>
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  
+  content.innerHTML = `
+    <div class="min-h-screen">
+      <!-- Admin header -->
+      <div class="sticky top-0 bg-[#050505] border-b border-[#2a2a2a] px-6 py-4 z-10">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <div class="font-mono text-[10px] uppercase tracking-widest text-[#888]">Control Panel</div>
+            <div class="font-display text-xl">DEEP DIVE · ADMIN</div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[#f0ff00]">
+              <span class="w-1.5 h-1.5 bg-[#f0ff00] rounded-full"></span>Connected
+            </span>
+            <button onclick="logoutAdmin()" class="font-mono text-[10px] uppercase tracking-widest text-[#888] hover:text-[#ff1f1f]">Logout</button>
+            <button onclick="closeAdmin()" class="font-mono text-[10px] uppercase tracking-widest text-[#888] hover:text-white">✕</button>
+          </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="flex gap-1 overflow-x-auto">
+          <button class="admin-tab ${adminTab === 'videos' ? 'active' : ''}" onclick="setTab('videos')">Videos (${allVideos.length})</button>
+          <button class="admin-tab ${adminTab === 'reviews' ? 'active' : ''}" onclick="setTab('reviews')">Reviews (${allReviews.length})</button>
+          <button class="admin-tab ${adminTab === 'recs' ? 'active' : ''}" onclick="setTab('recs')">Picks (${allRecommendations.length})</button>
+          <button class="admin-tab ${adminTab === 'subs' ? 'active' : ''}" onclick="setTab('subs')">Subscribers (${allSubscribers.length})</button>
+          <button class="admin-tab ${adminTab === 'settings' ? 'active' : ''}" onclick="setTab('settings')">Settings</button>
+        </div>
+      </div>
+      
+      <div class="p-6" id="admin-body">
+        ${renderAdminBody()}
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminBody() {
+  if (adminTab === 'videos') return renderVideosAdmin();
+  if (adminTab === 'reviews') return renderReviewsAdmin();
+  if (adminTab === 'recs') return renderRecsAdmin();
+  if (adminTab === 'subs') return renderSubsAdmin();
+  if (adminTab === 'settings') return renderSettingsAdmin();
+  return '';
+}
+
+function renderVideosAdmin() {
+  return `
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="font-display text-2xl">Manage Videos</h3>
+      <button onclick="openVideoForm()" class="btn-primary text-xs">+ New Video</button>
+    </div>
+    
+    <div id="video-form-wrap"></div>
+    
+    <div class="space-y-2">
+      ${allVideos.map(v => `
+        <div class="bg-[#141414] border border-[#2a2a2a] p-4 flex items-center gap-4">
+          <img src="${v.thumb}" class="w-20 h-12 object-cover bg-[#2a2a2a]">
+          <div class="flex-1 min-w-0">
+            <div class="font-medium truncate">${v.title}</div>
+            <div class="font-mono text-[10px] text-[#888] uppercase tracking-widest mt-1">${v.category} · ${v.duration} · ${v.views} views ${v.featured ? '· <span class="text-[#f0ff00]">FEATURED</span>' : ''}</div>
+          </div>
+          <button onclick="editVideo('${v.id}')" class="font-mono text-[10px] uppercase tracking-widest text-[#00d4ff] hover:text-white">Edit</button>
+          <button onclick="deleteVideo('${v.id}')" class="font-mono text-[10px] uppercase tracking-widest text-[#ff1f1f] hover:text-white">Delete</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function openVideoForm(video = null) {
+  const isEdit = !!video;
+  const wrap = document.getElementById('video-form-wrap');
+  wrap.innerHTML = `
+    <form onsubmit="saveVideo(event, ${isEdit ? `'${video.id}'` : 'null'})" class="bg-[#141414] border border-[#f0ff00] p-6 mb-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h4 class="font-display text-lg">${isEdit ? 'Edit Video' : 'New Video'}</h4>
+        <button type="button" onclick="document.getElementById('video-form-wrap').innerHTML=''" class="text-[#888] hover:text-white">✕</button>
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Title</label>
+        <input name="title" required value="${video?.title || ''}" class="admin-input">
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Category</label>
+          <select name="category" class="admin-input" required>
+            ${['Reviews','Tutorials','Builds','News','Vlogs'].map(c => `<option value="${c}" ${video?.category===c?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Duration</label>
+          <input name="duration" required value="${video?.duration || '00:00'}" placeholder="14:32" class="admin-input">
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">YouTube ID</label>
+          <input name="youtubeId" required value="${video?.youtubeId || ''}" placeholder="dQw4w9WgXcQ" class="admin-input">
+        </div>
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Thumbnail URL</label>
+          <input name="thumb" required value="${video?.thumb || ''}" placeholder="https://..." class="admin-input">
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Views</label>
+          <input name="views" value="${video?.views || '0'}" class="admin-input">
+        </div>
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Date Label</label>
+          <input name="date" value="${video?.date || 'just now'}" class="admin-input">
+        </div>
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-[#888] cursor-none">
+            <input type="checkbox" name="featured" ${video?.featured ? 'checked' : ''} class="w-4 h-4"> Featured (hero)
+          </label>
+        </div>
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Description</label>
+        <textarea name="desc" rows="2" required class="admin-input">${video?.desc || ''}</textarea>
+      </div>
+      
+      <button type="submit" class="btn-primary text-xs">${isEdit ? 'Update Video' : 'Publish Video'}</button>
+    </form>
+  `;
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function editVideo(id) {
+  const v = allVideos.find(x => x.id === id);
+  openVideoForm(v);
+}
+
+async function saveVideo(e, id) {
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    title: form.title.value,
+    category: form.category.value,
+    duration: form.duration.value,
+    youtubeId: form.youtubeId.value,
+    thumb: form.thumb.value,
+    views: form.views.value,
+    date: form.date.value,
+    featured: form.featured.checked,
+    desc: form.desc.value
+  };
+  
+  // If featured, unfeature others
+  if (data.featured) {
+    allVideos.forEach(v => { if (v.id !== id && v.featured) v.featured = false; });
+  }
+  
+  if (db) {
+    try {
+      if (id) {
+        await db.collection('videos').doc(id).set(data, { merge: true });
+      } else {
+        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('videos').add(data);
+      }
+    } catch (err) {
+      console.warn('Save failed, updating locally:', err);
+      if (id) {
+        const idx = allVideos.findIndex(v => v.id === id);
+        if (idx > -1) allVideos[idx] = { ...allVideos[idx], ...data };
+      } else {
+        allVideos.unshift({ id: 'local_' + Date.now(), ...data });
+      }
+      renderAll();
+    }
+  } else {
+    if (id) {
+      const idx = allVideos.findIndex(v => v.id === id);
+      if (idx > -1) allVideos[idx] = { ...allVideos[idx], ...data };
+    } else {
+      allVideos.unshift({ id: 'local_' + Date.now(), ...data });
+    }
+    renderAll();
+  }
+  
+  showToast(id ? '✓ Video updated' : '✓ Video published');
+  document.getElementById('video-form-wrap').innerHTML = '';
+  renderAdmin();
+}
+
+async function deleteVideo(id) {
+  if (!confirm('Delete this video? This cannot be undone.')) return;
+  
+  if (db) {
+    try {
+      await db.collection('videos').doc(id).delete();
+    } catch (err) {
+      console.warn('Delete failed, removing locally:', err);
+    }
+  }
+  
+  allVideos = allVideos.filter(v => v.id !== id);
+  renderAll();
+  renderAdmin();
+  showToast('✓ Video deleted');
+}
+
+/* REVIEWS ADMIN */
+function renderReviewsAdmin() {
+  return `
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="font-display text-2xl">Manage Reviews</h3>
+      <button onclick="openReviewForm()" class="btn-primary text-xs">+ New Review</button>
+    </div>
+    
+    <div id="review-form-wrap"></div>
+    
+    <div class="space-y-2">
+      ${allReviews.map(r => `
+        <div class="bg-[#141414] border border-[#2a2a2a] p-4 flex items-center gap-4">
+          <div class="w-12 h-12 bg-[#00d4ff] flex items-center justify-center font-display text-xl text-black flex-shrink-0">${r.title.charAt(0)}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium truncate">${r.title}</div>
+            <div class="font-mono text-[10px] text-[#888] uppercase tracking-widest mt-1">${r.readTime} · ${r.date} · ${r.tags.join(', ')}</div>
+          </div>
+          <button onclick="editReview('${r.id}')" class="font-mono text-[10px] uppercase tracking-widest text-[#00d4ff] hover:text-white">Edit</button>
+          <button onclick="deleteReview('${r.id}')" class="font-mono text-[10px] uppercase tracking-widest text-[#ff1f1f] hover:text-white">Delete</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function openReviewForm(review = null) {
+  const isEdit = !!review;
+  const wrap = document.getElementById('review-form-wrap');
+  wrap.innerHTML = `
+    <form onsubmit="saveReview(event, ${isEdit ? `'${review.id}'` : 'null'})" class="bg-[#141414] border border-[#f0ff00] p-6 mb-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h4 class="font-display text-lg">${isEdit ? 'Edit Review' : 'New Review'}</h4>
+        <button type="button" onclick="document.getElementById('review-form-wrap').innerHTML=''" class="text-[#888] hover:text-white">✕</button>
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Title</label>
+        <input name="title" required value="${review?.title || ''}" class="admin-input">
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Excerpt</label>
+        <input name="excerpt" required value="${review?.excerpt || ''}" class="admin-input">
+      </div>
+      
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Read Time</label>
+          <input name="readTime" required value="${review?.readTime || '10 min read'}" class="admin-input">
+        </div>
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Date</label>
+          <input name="date" required value="${review?.date || 'Today'}" class="admin-input">
+        </div>
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">YouTube ID</label>
+          <input name="youtubeId" required value="${review?.youtubeId || ''}" class="admin-input">
+        </div>
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Tags (comma-separated)</label>
+        <input name="tags" required value="${review?.tags?.join(', ') || ''}" class="admin-input">
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Content (Markdown supported)</label>
+        <textarea name="content" rows="12" required class="admin-input font-mono text-xs">${review?.content || ''}</textarea>
+      </div>
+      
+      <button type="submit" class="btn-primary text-xs">${isEdit ? 'Update Review' : 'Publish Review'}</button>
+    </form>
+  `;
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function editReview(id) {
+  const r = allReviews.find(x => x.id === id);
+  openReviewForm(r);
+}
+
+async function saveReview(e, id) {
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    title: form.title.value,
+    excerpt: form.excerpt.value,
+    readTime: form.readTime.value,
+    date: form.date.value,
+    youtubeId: form.youtubeId.value,
+    tags: form.tags.value.split(',').map(t => t.trim()).filter(Boolean),
+    content: form.content.value
+  };
+  
+  if (db) {
+    try {
+      if (id) {
+        await db.collection('reviews').doc(id).set(data, { merge: true });
+      } else {
+        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('reviews').add(data);
+      }
+    } catch (err) {
+      console.warn('Save failed, updating locally:', err);
+      if (id) {
+        const idx = allReviews.findIndex(r => r.id === id);
+        if (idx > -1) allReviews[idx] = { ...allReviews[idx], ...data };
+      } else {
+        allReviews.unshift({ id: 'local_' + Date.now(), ...data });
+      }
+      renderAll();
+    }
+  } else {
+    if (id) {
+      const idx = allReviews.findIndex(r => r.id === id);
+      if (idx > -1) allReviews[idx] = { ...allReviews[idx], ...data };
+    } else {
+      allReviews.unshift({ id: 'local_' + Date.now(), ...data });
+    }
+    renderAll();
+  }
+  
+  showToast(id ? '✓ Review updated' : '✓ Review published');
+  document.getElementById('review-form-wrap').innerHTML = '';
+  renderAdmin();
+}
+
+async function deleteReview(id) {
+  if (!confirm('Delete this review?')) return;
+  
+  if (db) {
+    try { await db.collection('reviews').doc(id).delete(); } catch (err) { console.warn(err); }
+  }
+  allReviews = allReviews.filter(r => r.id !== id);
+  currentReviewId = allReviews[0]?.id;
+  renderAll();
+  renderAdmin();
+  showToast('✓ Review deleted');
+}
+
+/* RECS ADMIN */
+function renderRecsAdmin() {
+  return `
+    <div class="flex justify-between items-center mb-6">
+      <h3 class="font-display text-2xl">Manage Picks</h3>
+      <button onclick="openRecForm()" class="btn-primary text-xs">+ New Pick</button>
+    </div>
+    
+    <div id="rec-form-wrap"></div>
+    
+    <div class="space-y-2">
+      ${allRecommendations.map(r => `
+        <div class="bg-[#141414] border border-[#2a2a2a] p-4 flex items-center gap-4">
+          <img src="${r.image}" class="w-12 h-12 object-cover bg-[#2a2a2a]">
+          <div class="flex-1 min-w-0">
+            <div class="font-medium truncate">${r.title}</div>
+            <div class="font-mono text-[10px] text-[#888] uppercase tracking-widest mt-1">$${r.price} · ${r.category} · <span class="verdict-${r.verdict} px-1 text-black">${r.verdict}</span></div>
+          </div>
+          <button onclick="editRec('${r.id}')" class="font-mono text-[10px] uppercase tracking-widest text-[#00d4ff] hover:text-white">Edit</button>
+          <button onclick="deleteRec('${r.id}')" class="font-mono text-[10px] uppercase tracking-widest text-[#ff1f1f] hover:text-white">Delete</button>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function openRecForm(rec = null) {
+  const isEdit = !!rec;
+  const wrap = document.getElementById('rec-form-wrap');
+  wrap.innerHTML = `
+    <form onsubmit="saveRec(event, ${isEdit ? `'${rec.id}'` : 'null'})" class="bg-[#141414] border border-[#f0ff00] p-6 mb-6 space-y-4">
+      <div class="flex justify-between items-center">
+        <h4 class="font-display text-lg">${isEdit ? 'Edit Pick' : 'New Pick'}</h4>
+        <button type="button" onclick="document.getElementById('rec-form-wrap').innerHTML=''" class="text-[#888] hover:text-white">✕</button>
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Title</label>
+        <input name="title" required value="${rec?.title || ''}" class="admin-input">
+      </div>
+      
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Price ($)</label>
+          <input name="price" type="number" required value="${rec?.price || 0}" class="admin-input">
+        </div>
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Category</label>
+          <input name="category" required value="${rec?.category || ''}" placeholder="Audio" class="admin-input">
+        </div>
+        <div>
+          <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Verdict</label>
+          <select name="verdict" class="admin-input">
+            ${['buy','wait','skip'].map(v => `<option value="${v}" ${rec?.verdict===v?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Image URL</label>
+        <input name="image" required value="${rec?.image || ''}" placeholder="https://..." class="admin-input">
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Link</label>
+        <input name="link" value="${rec?.link || '#'}" class="admin-input">
+      </div>
+      
+      <div>
+        <label class="font-mono text-[10px] uppercase tracking-widest text-[#888] block mb-1">Note</label>
+        <input name="note" required value="${rec?.note || ''}" class="admin-input">
+      </div>
+      
+      <button type="submit" class="btn-primary text-xs">${isEdit ? 'Update Pick' : 'Add Pick'}</button>
+    </form>
+  `;
+  wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function editRec(id) {
+  const r = allRecommendations.find(x => x.id === id);
+  openRecForm(r);
+}
+
+async function saveRec(e, id) {
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    title: form.title.value,
+    price: parseInt(form.price.value),
+    category: form.category.value,
+    verdict: form.verdict.value,
+    image: form.image.value,
+    link: form.link.value,
+    note: form.note.value
+  };
+  
+  if (db) {
+    try {
+      if (id) {
+        await db.collection('recommendations').doc(id).set(data, { merge: true });
+      } else {
+        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('recommendations').add(data);
+      }
+    } catch (err) {
+      console.warn('Save failed, updating locally:', err);
+      if (id) {
+        const idx = allRecommendations.findIndex(r => r.id === id);
+        if (idx > -1) allRecommendations[idx] = { ...allRecommendations[idx], ...data };
+      } else {
+        allRecommendations.unshift({ id: 'local_' + Date.now(), ...data });
+      }
+      renderAll();
+    }
+  } else {
+    if (id) {
+      const idx = allRecommendations.findIndex(r => r.id === id);
+      if (idx > -1) allRecommendations[idx] = { ...allRecommendations[idx], ...data };
+    } else {
+      allRecommendations.unshift({ id: 'local_' + Date.now(), ...data });
+    }
+    renderAll();
+  }
+  
+  showToast(id ? '✓ Pick updated' : '✓ Pick added');
+  document.getElementById('rec-form-wrap').innerHTML = '';
+  renderAdmin();
+}
+
+async function deleteRec(id) {
+  if (!confirm('Delete this pick?')) return;
+  
+  if (db) {
+    try { await db.collection('recommendations').doc(id).delete(); } catch (err) { console.warn(err); }
+  }
+  allRecommendations = allRecommendations.filter(r => r.id !== id);
+  renderAll();
+  renderAdmin();
+  showToast('✓ Pick deleted');
+}
+
+/* SUBSCRIBERS ADMIN */
+function renderSubsAdmin() {
+  return `
+    <div class="mb-6">
+      <h3 class="font-display text-2xl">Subscribers</h3>
+      <p class="text-xs text-[#888] mt-1">${allSubscribers.length} total subscribers</p>
+    </div>
+    
+    <div class="bg-[#141414] border border-[#2a2a2a]">
+      <div class="grid grid-cols-12 px-4 py-2 border-b border-[#2a2a2a] font-mono text-[10px] uppercase tracking-widest text-[#888]">
+        <div class="col-span-8">Email</div>
+        <div class="col-span-3">Date</div>
+        <div class="col-span-1"></div>
+      </div>
+      ${allSubscribers.length === 0 ? `
+        <div class="p-8 text-center text-[#666] font-mono text-xs">No subscribers yet.</div>
+      ` : allSubscribers.map(s => `
+        <div class="grid grid-cols-12 px-4 py-3 border-b border-[#1a1a1a] items-center">
+          <div class="col-span-8 text-sm">${s.email}</div>
+          <div class="col-span-3 font-mono text-[10px] text-[#888]">${s.createdAt?.toDate ? s.createdAt.toDate().toLocaleDateString() : (s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '—')}</div>
+          <div class="col-span-1 text-right">
+            <button onclick="deleteSub('${s.id}')" class="font-mono text-[10px] text-[#ff1f1f] hover:text-white">✕</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+async function deleteSub(id) {
+  if (db) {
+    try { await db.collection('subscribers').doc(id).delete(); } catch (err) { console.warn(err); }
+  }
+  allSubscribers = allSubscribers.filter(s => s.id !== id);
+  renderAdmin();
+  showToast('✓ Subscriber removed');
+}
+
+/* SETTINGS ADMIN */
+function renderSettingsAdmin() {
+  return `
+    <h3 class="font-display text-2xl mb-6">Settings</h3>
+    
+    <div class="space-y-6">
+      <div class="bg-[#141414] border border-[#2a2a2a] p-5">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-2">Admin Passphrase</div>
+        <p class="text-xs text-[#888] mb-4">Change the password used to access this admin panel.</p>
+        <form onsubmit="changePassword(event)" class="flex gap-2">
+          <input type="password" id="new-pass" class="admin-input" placeholder="New passphrase" required>
+          <button type="submit" class="btn-primary text-xs whitespace-nowrap">Update</button>
+        </form>
+      </div>
+      
+      <div class="bg-[#141414] border border-[#2a2a2a] p-5">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-2">Firebase Connection</div>
+        <div class="font-mono text-xs space-y-1">
+          <div>Status: <span class="text-[#f0ff00]">${db ? 'Connected' : 'Offline (using local fallback)'}</span></div>
+          <div>Project: <span class="text-[#00d4ff]">blog-653a6</span></div>
+          <div>Collections: videos, reviews, recommendations, subscribers</div>
+        </div>
+      </div>
+      
+      <div class="bg-[#141414] border border-[#2a2a2a] p-5">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#888] mb-2">Data Export</div>
+        <p class="text-xs text-[#888] mb-4">Download all content as JSON backup.</p>
+        <button onclick="exportData()" class="btn-outline text-xs">Export JSON</button>
+      </div>
+      
+      <div class="bg-[#141414] border border-[#ff1f1f] p-5">
+        <div class="font-mono text-[10px] uppercase tracking-widest text-[#ff1f1f] mb-2">⚠ Danger Zone</div>
+        <p class="text-xs text-[#888] mb-4">Reset all content to default sample data. Cannot be undone.</p>
+        <button onclick="resetData()" class="font-mono text-xs uppercase tracking-widest text-[#ff1f1f] border border-[#ff1f1f] px-4 py-2 hover:bg-[#ff1f1f] hover:text-white transition">Reset All Content</button>
+      </div>
+    </div>
+  `;
+}
+
+function changePassword(e) {
+  e.preventDefault();
+  const newPass = document.getElementById('new-pass').value;
+  if (db) {
+    db.collection('settings').doc('admin').set({ password: newPass }).catch(err => console.warn(err));
+  }
+  localStorage.setItem('deepdive_admin_pass', newPass);
+  showToast('✓ Passphrase updated');
+}
+
+function exportData() {
+  const data = { videos: allVideos, reviews: allReviews, recommendations: allRecommendations, subscribers: allSubscribers };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'deepdive-backup-' + Date.now() + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Data exported');
+}
+
+async function resetData() {
+  if (!confirm('Reset ALL content to defaults? This will permanently delete your custom content.')) return;
+  
+  if (db) {
+    try {
+      const batch = db.batch();
+      for (const v of allVideos) batch.delete(db.collection('videos').doc(v.id));
+      for (const r of allReviews) batch.delete(db.collection('reviews').doc(r.id));
+      for (const r of allRecommendations) batch.delete(db.collection('recommendations').doc(r.id));
+      await batch.commit();
+    } catch (err) { console.warn(err); }
+  }
+  
+  allVideos = [...DEFAULT_VIDEOS];
+  allReviews = [...DEFAULT_REVIEWS];
+  allRecommendations = [...DEFAULT_RECS];
+  renderAll();
+  renderAdmin();
+  showToast('✓ Reset to defaults');
+}
+
+function setTab(t) {
+  adminTab = t;
+  editingId = null;
+  renderAdmin();
+}
+
+function loginAdmin(e) {
+  e.preventDefault();
+  const pass = document.getElementById('admin-pass').value;
+  
+  // Check stored password first
+  const storedPass = localStorage.getItem('deepdive_admin_pass');
+  const validPass = storedPass || ADMIN_PASSWORD;
+  
+  if (pass === validPass) {
+    isAdmin = true;
+    localStorage.setItem('deepdive_admin', 'true');
+    renderAdmin();
+  } else {
+    // Try Firestore settings
+    if (db) {
+      db.collection('settings').doc('admin').get().then(doc => {
+        if (doc.exists && doc.data().password === pass) {
+          isAdmin = true;
+          localStorage.setItem('deepdive_admin', 'true');
+          renderAdmin();
+        } else {
+          alert('Wrong passphrase. Try: deepdive2024');
+        }
+      }).catch(() => alert('Wrong passphrase. Try: deepdive2024'));
+    } else {
+      alert('Wrong passphrase. Try: deepdive2024');
+    }
+  }
+}
+
+function logoutAdmin() {
+  isAdmin = false;
+  localStorage.removeItem('deepdive_admin');
+  renderAdmin();
+}
+
+/* ============================================
+   RENDER ALL
+   ============================================ */
+function renderAll() {
+  renderHero();
+  renderVideos();
+  renderReviews();
+  renderRecommendations();
+}
+
+/* ============================================
+   INIT
+   ============================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Check admin session
+  if (localStorage.getItem('deepdive_admin') === 'true') {
+    isAdmin = true;
+  }
+  
+  loadData();
+  tickTypewriter();
+});
+
+// Keyboard shortcut for admin (Ctrl+Shift+A)
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+    e.preventDefault();
+    openAdmin();
+  }
+  if (e.key === 'Escape') closeAdmin();
+});
+</script>
+
+</body>
+</html>
