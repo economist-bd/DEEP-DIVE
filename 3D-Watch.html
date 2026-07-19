@@ -1,0 +1,2066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HORLOGÉ — Atelier 3D Watch Customizer</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700;9..144,900&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0807;
+    --bg-2: #14100d;
+    --surface: #1c1612;
+    --surface-2: #251d16;
+    --border: #2a221c;
+    --border-2: #3a2e22;
+    --text: #f4ede0;
+    --muted: #8a7d6d;
+    --muted-2: #5a4f44;
+    --gold: #d4a574;
+    --gold-bright: #e8c08a;
+    --copper: #c8743a;
+    --burgundy: #8b3a3a;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+  }
+  .font-display { font-family: 'Fraunces', serif; }
+
+  .bg-atmosphere {
+    background:
+      radial-gradient(ellipse 90% 60% at 15% -10%, rgba(212, 165, 116, 0.10), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 85% 110%, rgba(200, 116, 58, 0.07), transparent 55%),
+      radial-gradient(ellipse 40% 30% at 50% 50%, rgba(212, 165, 116, 0.03), transparent 60%),
+      linear-gradient(180deg, #0a0807 0%, #0f0a07 50%, #0a0807 100%);
+  }
+
+  /* Noise texture overlay */
+  .noise-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.84 0 0 0 0 0.65 0 0 0 0 0.46 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .panel {
+    background: linear-gradient(180deg, rgba(28, 22, 18, 0.78), rgba(20, 16, 13, 0.85));
+    border-right: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .panel-right { border-right: none; border-left: 1px solid var(--border); }
+
+  .scroll-area { overflow-y: auto; }
+  .scroll-area::-webkit-scrollbar { width: 4px; }
+  .scroll-area::-webkit-scrollbar-track { background: transparent; }
+  .scroll-area::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+  .scroll-area::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+  .section-label {
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .opt-chip {
+    position: relative;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    background: rgba(10, 8, 7, 0.5);
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text);
+    width: 100%;
+    text-align: left;
+  }
+  .opt-chip:hover {
+    border-color: var(--gold);
+    background: rgba(212, 165, 116, 0.06);
+    transform: translateX(2px);
+  }
+  .opt-chip.active {
+    border-color: var(--gold);
+    background: rgba(212, 165, 116, 0.10);
+    box-shadow: 0 0 0 1px var(--gold), 0 0 16px rgba(212, 165, 116, 0.18);
+  }
+  .opt-chip.active::before {
+    content: '';
+    position: absolute;
+    left: -1px; top: -1px; bottom: -1px;
+    width: 2px;
+    background: var(--gold);
+    border-radius: 2px 0 0 2px;
+  }
+
+  .swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.3);
+  }
+  .swatch-metallic {
+    background-image: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(0,0,0,0.3) 100%);
+    background-blend-mode: overlay;
+  }
+
+  .time-display {
+    font-family: 'Fraunces', serif;
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+    font-weight: 300;
+  }
+
+  .tryon-btn {
+    background: linear-gradient(135deg, var(--gold) 0%, var(--copper) 100%);
+    color: #0a0807;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-size: 10.5px;
+    padding: 11px 20px;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tryon-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(212, 165, 116, 0.35), 0 0 0 1px rgba(232, 192, 138, 0.4);
+  }
+  .tryon-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(120deg, transparent 35%, rgba(255,255,255,0.4) 50%, transparent 65%);
+    transform: translateX(-120%);
+    transition: transform 0.7s ease;
+  }
+  .tryon-btn:hover::before { transform: translateX(120%); }
+  .tryon-btn.active {
+    background: linear-gradient(135deg, var(--burgundy), #5a1f1f);
+    color: var(--text);
+  }
+
+  .ghost-btn {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border-2);
+    font-size: 10.5px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 9px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ghost-btn:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  .webcam-container {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: none;
+    background: #000;
+  }
+  .webcam-container.active { display: block; }
+  .webcam-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+  }
+  .webcam-vignette {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 70% at 50% 50%, transparent 40%, rgba(0,0,0,0.6) 100%),
+      linear-gradient(180deg, rgba(0,0,0,0.3) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.4) 100%);
+    pointer-events: none;
+  }
+
+  .info-card {
+    position: absolute;
+    background: rgba(20, 16, 13, 0.92);
+    border: 1px solid var(--gold);
+    backdrop-filter: blur(10px);
+    padding: 10px 14px;
+    border-radius: 3px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -120%);
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 20;
+    min-width: 180px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(212, 165, 116, 0.2);
+  }
+  .info-card.visible {
+    opacity: 1;
+    transform: translate(-50%, -130%);
+  }
+  .info-card::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 10px;
+    height: 10px;
+    background: rgba(20, 16, 13, 0.92);
+    border-right: 1px solid var(--gold);
+    border-bottom: 1px solid var(--gold);
+  }
+
+  .preset-card {
+    position: relative;
+    border: 1px solid var(--border-2);
+    border-radius: 3px;
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: rgba(20, 16, 13, 0.75);
+    text-align: center;
+    min-width: 92px;
+  }
+  .preset-card:hover {
+    border-color: var(--gold);
+    transform: translateY(-2px);
+    background: rgba(28, 22, 18, 0.9);
+  }
+  .preset-card.active {
+    border-color: var(--gold);
+    background: rgba(212, 165, 116, 0.10);
+    box-shadow: 0 0 0 1px var(--gold), 0 6px 20px rgba(212, 165, 116, 0.18);
+  }
+  .preset-card .preset-swatch {
+    width: 100%;
+    height: 3px;
+    background: var(--gold);
+    margin-top: 6px;
+    border-radius: 1px;
+  }
+
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    transition: opacity 0.8s ease;
+  }
+  .loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .loading-mark {
+    width: 60px;
+    height: 60px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 1.2s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(20, 16, 13, 0.95);
+    border: 1px solid var(--gold);
+    color: var(--text);
+    padding: 12px 22px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    font-size: 12.5px;
+    letter-spacing: 0.05em;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border-2);
+    border-radius: 1px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--gold);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 0 3px var(--bg), 0 0 10px rgba(212, 165, 116, 0.5);
+    transition: transform 0.15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--gold);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid var(--bg);
+  }
+
+  .spec-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(42, 34, 28, 0.6);
+    font-size: 11.5px;
+  }
+  .spec-row:last-child { border-bottom: none; }
+  .spec-label { color: var(--muted); letter-spacing: 0.05em; }
+  .spec-value { color: var(--text); font-weight: 500; font-family: 'Fraunces', serif; font-size: 13px; }
+
+  .complication-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    margin-bottom: 6px;
+    transition: all 0.25s;
+    background: rgba(10,8,7,0.4);
+  }
+  .complication-row.glow {
+    border-color: var(--gold);
+    background: rgba(212, 165, 116, 0.08);
+    box-shadow: 0 0 16px rgba(212, 165, 116, 0.18);
+  }
+  .complication-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid var(--border-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 10px;
+    color: var(--gold);
+    background: rgba(0,0,0,0.4);
+  }
+  .complication-row.glow .complication-icon {
+    border-color: var(--gold);
+    background: rgba(212, 165, 116, 0.15);
+    box-shadow: 0 0 10px rgba(212, 165, 116, 0.4);
+  }
+
+  .fade-in { animation: fadeIn 0.6s ease both; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 10px var(--gold);
+    animation: pulseDot 2s ease-in-out infinite;
+  }
+  @keyframes pulseDot {
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  .vignette-frame {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 0 0 120px rgba(0,0,0,0.6);
+    z-index: 2;
+  }
+
+  @media (max-width: 1100px) {
+    .left-panel, .right-panel { width: 230px !important; }
+  }
+  @media (max-width: 900px) {
+    .left-panel, .right-panel { display: none; }
+    .mobile-warn { display: flex !important; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body class="bg-atmosphere noise-overlay">
+
+<div class="h-screen w-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between px-6 py-3.5 border-b border-[var(--border)] panel z-30 relative">
+    <div class="flex items-center gap-3">
+      <div class="relative w-9 h-9 rounded-full border border-[var(--gold)] flex items-center justify-center">
+        <div class="absolute inset-1 rounded-full border border-[var(--gold)] opacity-40"></div>
+        <div class="w-0.5 h-3 bg-[var(--gold)] absolute top-1.5 left-1/2 -translate-x-1/2 origin-bottom" style="transform: translateX(-50%) rotate(45deg);"></div>
+        <div class="w-1 h-1 bg-[var(--gold)] rounded-full"></div>
+      </div>
+      <div>
+        <div class="font-display text-xl font-bold tracking-wider leading-none">HORLOGÉ</div>
+        <div class="text-[9px] tracking-[0.32em] text-[var(--muted)] uppercase mt-0.5">Atelier 3D · Est. MMXXIV</div>
+      </div>
+    </div>
+
+    <div class="hidden md:flex items-center gap-7">
+      <div class="text-center">
+        <div class="section-label mb-0.5">Local Time</div>
+        <div class="time-display text-2xl tracking-wider" id="liveTime">--:--:--</div>
+      </div>
+      <div class="w-px h-9 bg-[var(--border)]"></div>
+      <div class="text-center">
+        <div class="section-label mb-0.5">Reference</div>
+        <div class="font-display text-lg" id="refName">Calibre 03</div>
+      </div>
+      <div class="w-px h-9 bg-[var(--border)]"></div>
+      <div class="flex items-center gap-2">
+        <div class="pulse-dot"></div>
+        <div class="text-[10px] tracking-[0.2em] uppercase text-[var(--muted)]">Live</div>
+      </div>
+    </div>
+
+    <button class="tryon-btn" id="tryonBtn">
+      <i class="fas fa-camera"></i>
+      <span id="tryonLabel">Try On Wrist</span>
+    </button>
+  </header>
+
+  <!-- Main content area -->
+  <div class="flex-1 flex relative overflow-hidden">
+
+    <!-- Left panel: Customization -->
+    <aside class="left-panel panel w-[270px] flex-shrink-0 scroll-area p-5 z-20 relative">
+      <div class="mb-5">
+        <div class="font-display text-2xl font-light leading-none">Configure</div>
+        <div class="section-label mt-1">Your timepiece</div>
+      </div>
+
+      <!-- Case Material -->
+      <div class="mb-6">
+        <div class="section-label mb-2.5 flex items-center justify-between">
+          <span>Case Material</span>
+          <span class="text-[var(--gold)] normal-case tracking-normal text-[10px] font-medium" id="caseMatLabel">Yellow Gold</span>
+        </div>
+        <div class="space-y-1.5" id="caseMaterialOpts"></div>
+      </div>
+
+      <!-- Dial Color -->
+      <div class="mb-6">
+        <div class="section-label mb-2.5 flex items-center justify-between">
+          <span>Dial Color</span>
+          <span class="text-[var(--gold)] normal-case tracking-normal text-[10px] font-medium" id="dialColorLabel">Cream</span>
+        </div>
+        <div class="space-y-1.5" id="dialColorOpts"></div>
+      </div>
+
+      <!-- Strap -->
+      <div class="mb-6">
+        <div class="section-label mb-2.5 flex items-center justify-between">
+          <span>Strap</span>
+          <span class="text-[var(--gold)] normal-case tracking-normal text-[10px] font-medium" id="strapLabel">Brown Leather</span>
+        </div>
+        <div class="space-y-1.5" id="strapOpts"></div>
+      </div>
+
+      <!-- Accent -->
+      <div class="mb-6">
+        <div class="section-label mb-2.5 flex items-center justify-between">
+          <span>Hand Accent</span>
+          <span class="text-[var(--gold)] normal-case tracking-normal text-[10px] font-medium" id="accentLabel">Copper</span>
+        </div>
+        <div class="grid grid-cols-2 gap-1.5" id="accentOpts"></div>
+      </div>
+
+      <!-- Case Size -->
+      <div class="mb-6">
+        <div class="section-label mb-2.5 flex items-center justify-between">
+          <span>Case Diameter</span>
+          <span class="text-[var(--gold)] normal-case tracking-normal text-[10px] font-medium"><span id="caseSizeLabel">41</span>mm</span>
+        </div>
+        <input type="range" min="38" max="44" value="41" step="1" id="caseSizeSlider">
+        <div class="flex justify-between text-[9px] text-[var(--muted-2)] mt-1.5">
+          <span>38</span><span>40</span><span>42</span><span>44</span>
+        </div>
+      </div>
+
+      <button class="ghost-btn w-full" id="resetBtn">
+        <i class="fas fa-rotate-left mr-1.5"></i> Reset Configuration
+      </button>
+
+      <div class="mt-6 pt-4 border-t border-[var(--border)] text-[10px] text-[var(--muted-2)] leading-relaxed">
+        Each timepiece is hand-finished in our atelier. Allow 6-8 weeks for delivery. Limited to 100 pieces per reference.
+      </div>
+    </aside>
+
+    <!-- Center: 3D viewport -->
+    <div class="flex-1 relative" id="viewport">
+      <canvas id="canvas3d" class="absolute inset-0 w-full h-full"></canvas>
+
+      <div class="vignette-frame"></div>
+
+      <!-- Loading overlay -->
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="text-center">
+          <div class="loading-mark"></div>
+          <div class="font-display text-3xl text-[var(--gold)] mb-2 tracking-wider">HORLOGÉ</div>
+          <div class="text-[10px] tracking-[0.4em] text-[var(--muted)] uppercase">Preparing Atelier</div>
+        </div>
+      </div>
+
+      <!-- Webcam container -->
+      <div class="webcam-container" id="webcamContainer">
+        <video class="webcam-video" id="webcamVideo" autoplay playsinline muted></video>
+        <div class="webcam-vignette"></div>
+      </div>
+
+      <!-- Floating complication info card -->
+      <div class="info-card" id="infoCard">
+        <div class="section-label" id="infoLabel">COMPLICATION</div>
+        <div class="font-display text-base mt-0.5" id="infoName">24-Hour Indicator</div>
+        <div class="text-[10px] text-[var(--muted)] mt-1 leading-snug" id="infoDesc">Day/night display</div>
+      </div>
+
+      <!-- Camera hint -->
+      <div class="absolute top-4 left-4 z-10 flex items-center gap-2 text-[10px] text-[var(--muted)] tracking-[0.2em] uppercase pointer-events-none">
+        <i class="fas fa-arrows-rotate text-[var(--gold)]"></i>
+        Drag to orbit · Scroll to zoom
+      </div>
+
+      <!-- AR status indicator (when in try-on mode) -->
+      <div class="absolute top-4 right-4 z-10 hidden" id="arStatus">
+        <div class="panel px-3 py-2 rounded flex items-center gap-2">
+          <div class="pulse-dot"></div>
+          <span class="text-[10px] tracking-[0.2em] uppercase">AR Wrist Mode</span>
+        </div>
+      </div>
+
+      <!-- Bottom preset strip -->
+      <div class="absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 z-10 panel px-3 py-2 rounded" id="presetStrip">
+        <div class="preset-card active" data-preset="0">
+          <div class="text-[11px] font-semibold tracking-wide">Heritage</div>
+          <div class="text-[9px] text-[var(--muted)]">Gold · Cream</div>
+          <div class="preset-swatch" style="background: linear-gradient(90deg, #d4a574, #f0e6d2, #4a2a1a);"></div>
+        </div>
+        <div class="preset-card" data-preset="1">
+          <div class="text-[11px] font-semibold tracking-wide">Noir</div>
+          <div class="text-[9px] text-[var(--muted)]">Carbon · Black</div>
+          <div class="preset-swatch" style="background: linear-gradient(90deg, #1a1a1a, #2a2a2a, #0a0a0a);"></div>
+        </div>
+        <div class="preset-card" data-preset="2">
+          <div class="text-[11px] font-semibold tracking-wide">Forest</div>
+          <div class="text-[9px] text-[var(--muted)]">Steel · Green</div>
+          <div class="preset-swatch" style="background: linear-gradient(90deg, #c8c8d0, #2a3d2a, #c8552a);"></div>
+        </div>
+        <div class="preset-card" data-preset="3">
+          <div class="text-[11px] font-semibold tracking-wide">Aurora</div>
+          <div class="text-[9px] text-[var(--muted)]">Bronze · Navy</div>
+          <div class="preset-swatch" style="background: linear-gradient(90deg, #9c6b3e, #1a2540, #0a0a0a);"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right panel: Specs & complications -->
+    <aside class="right-panel panel panel-right w-[270px] flex-shrink-0 scroll-area p-5 z-20 relative">
+      <div class="mb-5">
+        <div class="font-display text-2xl font-light leading-none">Specifications</div>
+        <div class="section-label mt-1">Reference 03.A</div>
+      </div>
+
+      <!-- Complications list -->
+      <div class="mb-6">
+        <div class="section-label mb-2.5">Complications</div>
+        <div id="complicationsList">
+          <div class="complication-row" data-complication="0">
+            <div class="complication-icon"><i class="fas fa-sun"></i></div>
+            <div>
+              <div class="text-[12px] font-medium">24-Hour Indicator</div>
+              <div class="text-[10px] text-[var(--muted)]">Day/night display at 12</div>
+            </div>
+          </div>
+          <div class="complication-row" data-complication="1">
+            <div class="complication-icon"><i class="fas fa-clock"></i></div>
+            <div>
+              <div class="text-[12px] font-medium">Small Seconds</div>
+              <div class="text-[10px] text-[var(--muted)]">Continuous sweep at 6</div>
+            </div>
+          </div>
+          <div class="complication-row" data-complication="2">
+            <div class="complication-icon"><i class="fas fa-stopwatch"></i></div>
+            <div>
+              <div class="text-[12px] font-medium">Chronograph Minutes</div>
+              <div class="text-[10px] text-[var(--muted)]">30-min counter at 9</div>
+            </div>
+          </div>
+        </div>
+        <div class="text-[10px] text-[var(--muted-2)] mt-2 italic">Hover subdials on the watch to inspect</div>
+      </div>
+
+      <!-- Specs -->
+      <div class="mb-6">
+        <div class="section-label mb-2.5">Technical</div>
+        <div class="spec-row">
+          <span class="spec-label">Case Material</span>
+          <span class="spec-value" id="specCase">Yellow Gold</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Dial</span>
+          <span class="spec-value" id="specDial">Cream</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Strap</span>
+          <span class="spec-value" id="specStrap">Brown Leather</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Diameter</span>
+          <span class="spec-value"><span id="specSize">41</span>mm</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Thickness</span>
+          <span class="spec-value">12.4mm</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Water Resist.</span>
+          <span class="spec-value">100m</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Movement</span>
+          <span class="spec-value">Cal. 03 Auto</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Power Reserve</span>
+          <span class="spec-value">72h</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Frequency</span>
+          <span class="spec-value">28,800 vph</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Jewels</span>
+          <span class="spec-value">27</span>
+        </div>
+        <div class="spec-row">
+          <span class="spec-label">Crystal</span>
+          <span class="spec-value">Sapphire AR</span>
+        </div>
+      </div>
+
+      <!-- Price -->
+      <div class="mb-6 p-4 border border-[var(--border-2)] rounded bg-[rgba(10,8,7,0.4)]">
+        <div class="section-label mb-1">Configuration Price</div>
+        <div class="font-display text-3xl font-light tracking-tight" id="priceDisplay">€ 18,450</div>
+        <div class="text-[10px] text-[var(--muted)] mt-1">Incl. attestation & delivery</div>
+      </div>
+
+      <button class="tryon-btn w-full justify-center" id="inquireBtn">
+        <i class="fas fa-envelope"></i>
+        Request Atelier
+      </button>
+    </aside>
+
+  </div>
+</div>
+
+<!-- Mobile warning -->
+<div class="mobile-warn fixed inset-0 z-[200] hidden flex-col items-center justify-center bg-[var(--bg)] p-8 text-center">
+  <div class="font-display text-3xl text-[var(--gold)] mb-3">HORLOGÉ</div>
+  <div class="text-sm text-[var(--muted)] max-w-xs">This atelier experience requires a larger screen. Please visit on a tablet or desktop.</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+// ============ STATE ============
+const state = {
+  caseMaterial: 'gold',
+  dialColor: 'cream',
+  strap: 'leather-brown',
+  accent: 'copper',
+  caseSize: 41,
+  tryOnMode: false,
+  hands: null
+};
+
+const defaultState = { ...state };
+
+// ============ DATA ============
+const materials = {
+  gold:   { color: 0xd4a574, metalness: 1.0, roughness: 0.18, name: 'Yellow Gold', price: 4500 },
+  rose:   { color: 0xb76e79, metalness: 1.0, roughness: 0.20, name: 'Rose Gold', price: 5200 },
+  steel:  { color: 0xc8c8d0, metalness: 1.0, roughness: 0.28, name: 'Steel', price: 1800 },
+  bronze: { color: 0x9c6b3e, metalness: 1.0, roughness: 0.32, name: 'Bronze', price: 3200 },
+  carbon: { color: 0x1a1a1a, metalness: 0.4, roughness: 0.55, name: 'Carbon', price: 2800 }
+};
+
+const dials = {
+  cream:    { color: 0xf0e6d2, accent: 0x3a2a1a, name: 'Cream',    price: 0 },
+  charcoal: { color: 0x1a1a1a, accent: 0xd4a574, name: 'Charcoal', price: 0 },
+  navy:     { color: 0x1a2540, accent: 0xd4a574, name: 'Navy',     price: 200 },
+  forest:   { color: 0x2a3d2a, accent: 0xc8c8d0, name: 'Forest',   price: 200 },
+  burgundy: { color: 0x4a1a1a, accent: 0xd4a574, name: 'Burgundy', price: 300 }
+};
+
+const straps = {
+  'leather-brown':  { color: 0x4a2a1a, metalness: 0.1, roughness: 0.85, name: 'Brown Leather',  price: 650, type: 'leather' },
+  'leather-black':  { color: 0x1a1a1a, metalness: 0.1, roughness: 0.85, name: 'Black Leather',  price: 650, type: 'leather' },
+  'leather-tan':    { color: 0x8a5a3a, metalness: 0.1, roughness: 0.80, name: 'Tan Leather',    price: 720, type: 'leather' },
+  'bracelet-steel': { color: 0xc8c8d0, metalness: 1.0, roughness: 0.28, name: 'Steel Bracelet', price: 1450, type: 'bracelet' },
+  'bracelet-gold':  { color: 0xd4a574, metalness: 1.0, roughness: 0.18, name: 'Gold Bracelet',  price: 2800, type: 'bracelet' },
+  'rubber-black':   { color: 0x0a0a0a, metalness: 0.2, roughness: 0.90, name: 'Black Rubber',   price: 380, type: 'rubber' },
+  'fabric-orange':  { color: 0xc8552a, metalness: 0.0, roughness: 0.95, name: 'Orange NATO',    price: 280, type: 'fabric' }
+};
+
+const accents = {
+  copper:  { color: 0xc8743a, name: 'Copper',  price: 0 },
+  crimson: { color: 0xa82828, name: 'Crimson', price: 0 },
+  pearl:   { color: 0xf0e6d2, name: 'Pearl',   price: 0 },
+  emerald: { color: 0x3a7a4a, name: 'Emerald', price: 150 }
+};
+
+const presets = [
+  { name: 'Heritage', caseMaterial: 'gold',   dialColor: 'cream',    strap: 'leather-brown',  accent: 'copper' },
+  { name: 'Noir',     caseMaterial: 'carbon', dialColor: 'charcoal', strap: 'rubber-black',   accent: 'crimson' },
+  { name: 'Forest',   caseMaterial: 'steel',  dialColor: 'forest',   strap: 'fabric-orange',  accent: 'pearl' },
+  { name: 'Aurora',   caseMaterial: 'bronze', dialColor: 'navy',     strap: 'rubber-black',   accent: 'pearl' }
+];
+
+const basePrice = 12000;
+
+// ============ SCENE SETUP ============
+const canvas = document.getElementById('canvas3d');
+const viewport = document.getElementById('viewport');
+
+const scene = new THREE.Scene();
+scene.background = null;
+
+const camera = new THREE.PerspectiveCamera(32, viewport.clientWidth / viewport.clientHeight, 0.1, 100);
+camera.position.set(0, 0.8, 8.5);
+
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  alpha: true,
+  preserveDrawingBuffer: true,
+  powerPreference: 'high-performance'
+});
+renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+// Environment for PBR reflections
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+const envScene = new RoomEnvironment();
+scene.environment = pmremGenerator.fromScene(envScene, 0.04).texture;
+
+// ============ LIGHTING ============
+const keyLight = new THREE.SpotLight(0xfff2dc, 120, 30, Math.PI / 4.5, 0.6, 1.2);
+keyLight.position.set(4, 7, 5);
+keyLight.target.position.set(0, 0, 0);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 2048;
+keyLight.shadow.mapSize.height = 2048;
+keyLight.shadow.bias = -0.0001;
+keyLight.shadow.camera.near = 1;
+keyLight.shadow.camera.far = 25;
+scene.add(keyLight);
+scene.add(keyLight.target);
+
+const fillLight = new THREE.DirectionalLight(0x88a8d0, 0.35);
+fillLight.position.set(-6, 2, 3);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xff9966, 0.55);
+rimLight.position.set(-2, -1, -6);
+scene.add(rimLight);
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.18);
+scene.add(ambient);
+
+// Accent point light for drama
+const accentLight = new THREE.PointLight(0xd4a574, 1.5, 8, 1.5);
+accentLight.position.set(0, 0, 4);
+scene.add(accentLight);
+
+// ============ CONTROLS ============
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 4;
+controls.maxDistance = 14;
+controls.maxPolarAngle = Math.PI * 0.78;
+controls.minPolarAngle = Math.PI * 0.18;
+controls.enablePan = false;
+
+// ============ WATCH GROUP ============
+const watchGroup = new THREE.Group();
+watchGroup.rotation.x = -0.12;
+watchGroup.rotation.y = 0.18;
+scene.add(watchGroup);
+
+// Interactive meshes for raycasting
+const interactiveMeshes = [];
+const subdials = [];
+let dialMaterialRef = null;
+let dialTextureRef = null;
+
+// ============ DIAL TEXTURE GENERATOR ============
+function createDialTexture(dialColorHex, accentHex) {
+  const c = document.createElement('canvas');
+  c.width = 1024;
+  c.height = 1024;
+  const ctx = c.getContext('2d');
+
+  const dialHex = '#' + dialColorHex.toString(16).padStart(6, '0');
+  const accHex = '#' + accentHex.toString(16).padStart(6, '0');
+
+  // Base
+  ctx.fillStyle = dialHex;
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Sunburst guilloché effect
+  ctx.save();
+  ctx.translate(512, 512);
+  for (let i = 0; i < 360; i++) {
+    const angle = (i / 360) * Math.PI * 2;
+    ctx.save();
+    ctx.rotate(angle);
+    const grad = ctx.createLinearGradient(0, 0, 0, 500);
+    grad.addColorStop(0, 'rgba(255,255,255,0.06)');
+    grad.addColorStop(0.5, 'rgba(255,255,255,0.02)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.08)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(-1.5, 0, 3, 500);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  // Subtle vignette
+  const vGrad = ctx.createRadialGradient(512, 512, 200, 512, 512, 520);
+  vGrad.addColorStop(0, 'rgba(0,0,0,0)');
+  vGrad.addColorStop(1, 'rgba(0,0,0,0.35)');
+  ctx.fillStyle = vGrad;
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Brand text
+  ctx.fillStyle = accHex;
+  ctx.font = '700 58px "Fraunces", serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('HORLOGÉ', 512, 420);
+
+  // Model
+  ctx.font = '500 18px "Manrope", sans-serif';
+  ctx.fillStyle = accHex;
+  ctx.globalAlpha = 0.85;
+  // Letter spacing simulation
+  const modelText = 'A U T O M A T I C';
+  ctx.fillText(modelText, 512, 620);
+
+  // Tiny "SWISS MADE"
+  ctx.font = '500 13px "Manrope", sans-serif';
+  ctx.globalAlpha = 0.65;
+  ctx.fillText('SWISS MADE', 512, 690);
+
+  ctx.globalAlpha = 1;
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+// ============ BUILD WATCH ============
+function buildWatch() {
+  // Clear
+  while (watchGroup.children.length) {
+    const child = watchGroup.children[0];
+    watchGroup.remove(child);
+    child.traverse?.(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+        else o.material.dispose();
+      }
+    });
+  }
+  interactiveMeshes.length = 0;
+  subdials.length = 0;
+
+  const caseMat = new THREE.MeshStandardMaterial({
+    color: materials[state.caseMaterial].color,
+    metalness: materials[state.caseMaterial].metalness,
+    roughness: materials[state.caseMaterial].roughness,
+    envMapIntensity: 1.2
+  });
+
+  // === CASE BODY ===
+  const caseGeo = new THREE.CylinderGeometry(2, 1.95, 0.72, 96);
+  const watchCase = new THREE.Mesh(caseGeo, caseMat);
+  watchCase.rotation.x = Math.PI / 2;
+  watchCase.castShadow = true;
+  watchCase.receiveShadow = true;
+  watchCase.userData.isCase = true;
+  watchGroup.add(watchCase);
+
+  // Caseback
+  const casebackGeo = new THREE.CylinderGeometry(1.92, 1.85, 0.12, 96);
+  const caseback = new THREE.Mesh(casebackGeo, caseMat);
+  caseback.position.z = -0.42;
+  caseback.rotation.x = Math.PI / 2;
+  watchGroup.add(caseback);
+
+  // === BEZEL ===
+  const bezelGeo = new THREE.TorusGeometry(1.95, 0.16, 32, 96);
+  const bezel = new THREE.Mesh(bezelGeo, caseMat);
+  bezel.position.z = 0.36;
+  bezel.castShadow = true;
+  watchGroup.add(bezel);
+
+  // Inner bezel ring (sloped)
+  const innerBezelGeo = new THREE.RingGeometry(1.72, 1.92, 96);
+  const innerBezelMat = new THREE.MeshStandardMaterial({
+    color: materials[state.caseMaterial].color,
+    metalness: materials[state.caseMaterial].metalness,
+    roughness: materials[state.caseMaterial].roughness * 1.4,
+    envMapIntensity: 1.0
+  });
+  const innerBezel = new THREE.Mesh(innerBezelGeo, innerBezelMat);
+  innerBezel.position.z = 0.34;
+  watchGroup.add(innerBezel);
+
+  // === CROWN ===
+  const crownGroup = new THREE.Group();
+  const crownBodyGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.32, 24);
+  const crownBody = new THREE.Mesh(crownBodyGeo, caseMat);
+  crownBody.rotation.z = Math.PI / 2;
+  crownGroup.add(crownBody);
+
+  // Crown knurling (small ridges)
+  for (let i = 0; i < 16; i++) {
+    const angle = (i / 16) * Math.PI * 2;
+    const ridge = new THREE.Mesh(
+      new THREE.BoxGeometry(0.34, 0.015, 0.015),
+      caseMat
+    );
+    ridge.position.set(0, Math.sin(angle) * 0.2, Math.cos(angle) * 0.2);
+    ridge.rotation.x = angle;
+    crownGroup.add(ridge);
+  }
+  crownGroup.position.set(2.15, 0, 0);
+  watchGroup.add(crownGroup);
+
+  // === PUSHERS (chronograph) ===
+  const pusherGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.22, 16);
+  const pusher1 = new THREE.Mesh(pusherGeo, caseMat);
+  pusher1.position.set(2.08, 0.55, 0);
+  pusher1.rotation.z = Math.PI / 2;
+  watchGroup.add(pusher1);
+
+  const pusher2 = new THREE.Mesh(pusherGeo, caseMat);
+  pusher2.position.set(2.08, -0.55, 0);
+  pusher2.rotation.z = Math.PI / 2;
+  watchGroup.add(pusher2);
+
+  // === LUGS ===
+  const lugGeo = new THREE.BoxGeometry(0.55, 0.32, 0.7);
+  const lugPositions = [
+    { x: 0.85, y: 1.85, rot: 0.35 },
+    { x: -0.85, y: 1.85, rot: -0.35 },
+    { x: 0.85, y: -1.85, rot: -0.35 },
+    { x: -0.85, y: -1.85, rot: 0.35 }
+  ];
+  lugPositions.forEach(p => {
+    const lug = new THREE.Mesh(lugGeo, caseMat);
+    lug.position.set(p.x, p.y, 0);
+    lug.rotation.z = p.rot;
+    lug.castShadow = true;
+    watchGroup.add(lug);
+  });
+
+  // === DIAL ===
+  if (dialTextureRef) dialTextureRef.dispose();
+  dialTextureRef = createDialTexture(dials[state.dialColor].color, dials[state.dialColor].accent);
+
+  dialMaterialRef = new THREE.MeshStandardMaterial({
+    map: dialTextureRef,
+    metalness: 0.35,
+    roughness: 0.45,
+    envMapIntensity: 0.8
+  });
+
+  const dialGeo = new THREE.CircleGeometry(1.72, 96);
+  const dial = new THREE.Mesh(dialGeo, dialMaterialRef);
+  dial.position.z = 0.3;
+  watchGroup.add(dial);
+
+  // === HOUR MARKERS ===
+  const accentColor = dials[state.dialColor].accent;
+  const markerMat = new THREE.MeshStandardMaterial({
+    color: accentColor,
+    metalness: 1.0,
+    roughness: 0.15,
+    emissive: accentColor,
+    emissiveIntensity: 0.04,
+    envMapIntensity: 1.4
+  });
+
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2;
+    const isCardinal = i % 3 === 0;
+    const w = isCardinal ? 0.1 : 0.05;
+    const h = isCardinal ? 0.26 : 0.16;
+    const markerGeo = new THREE.BoxGeometry(w, h, 0.05);
+    const marker = new THREE.Mesh(markerGeo, markerMat);
+    const r = 1.48;
+    marker.position.set(Math.sin(angle) * r, Math.cos(angle) * r, 0.34);
+    marker.rotation.z = -angle;
+    watchGroup.add(marker);
+  }
+
+  // Minute track dots
+  const dotMat = new THREE.MeshStandardMaterial({
+    color: accentColor,
+    metalness: 0.9,
+    roughness: 0.3
+  });
+  for (let i = 0; i < 60; i++) {
+    if (i % 5 === 0) continue;
+    const angle = (i / 60) * Math.PI * 2;
+    const dotGeo = new THREE.CircleGeometry(0.018, 8);
+    const dot = new THREE.Mesh(dotGeo, dotMat);
+    dot.position.set(Math.sin(angle) * 1.62, Math.cos(angle) * 1.62, 0.32);
+    watchGroup.add(dot);
+  }
+
+  // === SUBDIALS (complications) ===
+  const subdialData = [
+    { x: 0, y: 0.88, label: '24H', name: '24-Hour Indicator', desc: 'Day/night display', icon: 'sun' },
+    { x: 0, y: -0.88, label: 'SEC', name: 'Small Seconds', desc: 'Continuous sweep', icon: 'clock' },
+    { x: -0.88, y: 0, label: 'MIN', name: 'Chronograph Minutes', desc: '30-minute counter', icon: 'stopwatch' }
+  ];
+
+  subdialData.forEach((data, idx) => {
+    const sg = new THREE.Group();
+    sg.position.set(data.x, data.y, 0.32);
+
+    // Recessed subdial background
+    const subGeo = new THREE.CircleGeometry(0.42, 48);
+    const subMat = new THREE.MeshStandardMaterial({
+      color: 0x0a0807,
+      metalness: 0.5,
+      roughness: 0.5,
+      emissive: 0x000000,
+      emissiveIntensity: 0
+    });
+    const subMesh = new THREE.Mesh(subGeo, subMat);
+    subMesh.userData = {
+      isComplication: true,
+      index: idx,
+      name: data.name,
+      desc: data.desc,
+      label: data.label,
+      baseEmissive: 0
+    };
+    sg.add(subMesh);
+    interactiveMeshes.push(subMesh);
+
+    // Subdial rim
+    const rimGeo = new THREE.RingGeometry(0.4, 0.43, 48);
+    const rimMat = new THREE.MeshStandardMaterial({
+      color: accentColor,
+      metalness: 1.0,
+      roughness: 0.2
+    });
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    sg.add(rim);
+
+    // Subdial ticks
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const tg = new THREE.BoxGeometry(0.015, 0.05, 0.005);
+      const t = new THREE.Mesh(tg, rimMat);
+      t.position.set(Math.sin(a) * 0.34, Math.cos(a) * 0.34, 0.01);
+      t.rotation.z = -a;
+      sg.add(t);
+    }
+
+    // Subdial hand
+    const handMat = new THREE.MeshStandardMaterial({
+      color: accentColor,
+      metalness: 1.0,
+      roughness: 0.2
+    });
+    const handGeo = new THREE.BoxGeometry(0.025, 0.32, 0.012);
+    handGeo.translate(0, 0.14, 0);
+    const hand = new THREE.Mesh(handGeo, handMat);
+    hand.position.z = 0.025;
+    sg.add(hand);
+
+    // Subdial center pin
+    const pinGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.04, 12);
+    const pin = new THREE.Mesh(pinGeo, handMat);
+    pin.position.z = 0.04;
+    pin.rotation.x = Math.PI / 2;
+    sg.add(pin);
+
+    subdials.push({ group: sg, hand: hand, mesh: subMesh, data });
+    watchGroup.add(sg);
+  });
+
+  // === MAIN HANDS ===
+  const handMaterial = new THREE.MeshStandardMaterial({
+    color: accentColor,
+    metalness: 1.0,
+    roughness: 0.18,
+    envMapIntensity: 1.3
+  });
+
+  const accentColorHex = accents[state.accent].color;
+  const secondHandMaterial = new THREE.MeshStandardMaterial({
+    color: accentColorHex,
+    metalness: 0.7,
+    roughness: 0.35,
+    emissive: accentColorHex,
+    emissiveIntensity: 0.35
+  });
+
+  // Hour hand
+  const hourHandGeo = new THREE.BoxGeometry(0.075, 1.0, 0.03);
+  hourHandGeo.translate(0, 0.45, 0);
+  const hourHand = new THREE.Mesh(hourHandGeo, handMaterial);
+  hourHand.position.z = 0.42;
+  watchGroup.add(hourHand);
+
+  // Minute hand
+  const minHandGeo = new THREE.BoxGeometry(0.055, 1.42, 0.03);
+  minHandGeo.translate(0, 0.66, 0);
+  const minHand = new THREE.Mesh(minHandGeo, handMaterial);
+  minHand.position.z = 0.44;
+  watchGroup.add(minHand);
+
+  // Second hand (with tail)
+  const secHandGeo = new THREE.BoxGeometry(0.018, 1.65, 0.018);
+  secHandGeo.translate(0, 0.6, 0);
+  const secHand = new THREE.Mesh(secHandGeo, secondHandMaterial);
+  secHand.position.z = 0.46;
+  watchGroup.add(secHand);
+
+  // Second hand counterweight
+  const counterGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.04, 16);
+  const counter = new THREE.Mesh(counterGeo, secondHandMaterial);
+  counter.position.set(0, -0.18, 0);
+  secHand.add(counter);
+
+  // Center cap
+  const capGeo = new THREE.CylinderGeometry(0.085, 0.11, 0.08, 24);
+  const cap = new THREE.Mesh(capGeo, handMaterial);
+  cap.position.z = 0.5;
+  cap.rotation.x = Math.PI / 2;
+  watchGroup.add(cap);
+
+  // === CRYSTAL ===
+  const crystalGeo = new THREE.SphereGeometry(1.78, 96, 48, 0, Math.PI * 2, 0, Math.PI * 0.2);
+  const crystalMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    metalness: 0,
+    roughness: 0.02,
+    transmission: 0.92,
+    thickness: 0.4,
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide,
+    clearcoat: 1,
+    clearcoatRoughness: 0.02,
+    envMapIntensity: 1.5,
+    ior: 1.5
+  });
+  const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+  crystal.position.z = 0.28;
+  crystal.scale.z = 0.35;
+  watchGroup.add(crystal);
+
+  // === STRAP ===
+  buildStrap();
+
+  state.hands = { hour: hourHand, min: minHand, sec: secHand };
+}
+
+// ============ STRAP BUILDER ============
+function buildStrap() {
+  const oldStraps = watchGroup.children.filter(c => c.userData.isStrap);
+  oldStraps.forEach(s => {
+    watchGroup.remove(s);
+    s.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
+  });
+
+  const strapData = straps[state.strap];
+  const strapMat = new THREE.MeshStandardMaterial({
+    color: strapData.color,
+    metalness: strapData.metalness,
+    roughness: strapData.roughness,
+    envMapIntensity: 0.8
+  });
+
+  const topStrap = createStrapSegment(strapMat, strapData.type, 'top');
+  topStrap.userData.isStrap = true;
+  watchGroup.add(topStrap);
+
+  const bottomStrap = createStrapSegment(strapMat, strapData.type, 'bottom');
+  bottomStrap.userData.isStrap = true;
+  watchGroup.add(bottomStrap);
+}
+
+function createStrapSegment(material, type, direction) {
+  const group = new THREE.Group();
+  const dir = direction === 'top' ? 1 : -1;
+
+  if (type === 'bracelet') {
+    // Multi-link bracelet
+    const linkCount = 9;
+    const caseMatColor = materials[state.caseMaterial].color;
+    const caseMatProps = {
+      metalness: materials[state.caseMaterial].metalness,
+      roughness: materials[state.caseMaterial].roughness
+    };
+    
+    // Endlink (connects to case)
+    const endlinkMat = new THREE.MeshStandardMaterial({
+      color: caseMatColor,
+      metalness: caseMatProps.metalness,
+      roughness: caseMatProps.roughness,
+      envMapIntensity: 1.2
+    });
+    const endlink = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 0.45, 0.4),
+      endlinkMat
+    );
+    endlink.position.set(0, dir * 2.05, 0);
+    endlink.castShadow = true;
+    group.add(endlink);
+
+    for (let i = 0; i < linkCount; i++) {
+      const t = i / (linkCount - 1);
+      const w = 1.4 - t * 0.4;
+      const angle = t * 0.55;
+      const distance = 2.45 + i * 0.36;
+      
+      // Outer link
+      const link = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.18, 0.3),
+        material.clone()
+      );
+      link.position.set(0, dir * distance, -Math.sin(angle) * 0.55);
+      link.rotation.x = dir * angle * 0.55;
+      link.castShadow = true;
+      group.add(link);
+
+      // Center link (lighter for contrast)
+      if (i % 2 === 0) {
+        const centerLink = new THREE.Mesh(
+          new THREE.BoxGeometry(w * 0.4, 0.16, 0.32),
+          endlinkMat.clone()
+        );
+        centerLink.position.set(0, dir * distance, -Math.sin(angle) * 0.55 + 0.01);
+        centerLink.rotation.x = dir * angle * 0.55;
+        group.add(centerLink);
+      }
+    }
+  } else if (type === 'leather') {
+    // Leather strap with stitching
+    const segCount = 12;
+    for (let i = 0; i < segCount; i++) {
+      const t = i / (segCount - 1);
+      const w = 1.35 - t * 0.35;
+      const angle = t * 0.55;
+      const distance = 2.05 + i * 0.27;
+      
+      const seg = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.22, 0.14),
+        material
+      );
+      seg.position.set(0, dir * distance, -Math.sin(angle) * 0.65);
+      seg.rotation.x = dir * angle * 0.5;
+      seg.castShadow = true;
+      group.add(seg);
+
+      // Stitching (small dots on edges)
+      const stitchMat = new THREE.MeshStandardMaterial({
+        color: 0xe8c08a,
+        metalness: 0.3,
+        roughness: 0.7
+      });
+      for (let s = -2; s <= 2; s++) {
+        if (s === 0) continue;
+        const stitchL = new THREE.Mesh(
+          new THREE.SphereGeometry(0.018, 8, 8),
+          stitchMat
+        );
+        stitchL.position.set(s * 0.22, dir * distance + 0.1, -Math.sin(angle) * 0.65 + 0.075);
+        stitchL.position.x = -w/2 + 0.1 + (s + 2) * 0.18 * (w/1.35);
+        stitchL.position.x = (s * 0.18) * (w/1.35);
+        stitchL.position.y = dir * distance + 0.11;
+        stitchL.position.z = -Math.sin(angle) * 0.65 + 0.075;
+        stitchL.rotation.x = dir * angle * 0.5;
+        group.add(stitchL);
+      }
+    }
+  } else if (type === 'rubber') {
+    // Rubber strap with texture dots
+    const segCount = 11;
+    for (let i = 0; i < segCount; i++) {
+      const t = i / (segCount - 1);
+      const w = 1.3 - t * 0.35;
+      const angle = t * 0.6;
+      const distance = 2.05 + i * 0.3;
+      
+      const seg = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.24, 0.16),
+        material
+      );
+      seg.position.set(0, dir * distance, -Math.sin(angle) * 0.7);
+      seg.rotation.x = dir * angle * 0.5;
+      seg.castShadow = true;
+      group.add(seg);
+
+      // Texture dots
+      const dotMat = new THREE.MeshStandardMaterial({
+        color: 0x222222,
+        metalness: 0.3,
+        roughness: 0.8
+      });
+      for (let r = -1; r <= 1; r++) {
+        for (let c = -1; c <= 1; c++) {
+          const dot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.025, 8, 8),
+            dotMat
+          );
+          dot.position.set(c * 0.25 * (w/1.3), dir * distance + r * 0.06, -Math.sin(angle) * 0.7 + 0.085);
+          dot.position.y = dir * (distance - r * 0.05);
+          group.add(dot);
+        }
+      }
+    }
+  } else if (type === 'fabric') {
+    // NATO-style fabric strap
+    const segments = 14;
+    for (let i = 0; i < segments; i++) {
+      const t = i / (segments - 1);
+      const w = 1.25 - t * 0.2;
+      const angle = t * 0.5;
+      const distance = 2.0 + i * 0.24;
+      
+      const seg = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.16, 0.08),
+        material
+      );
+      seg.position.set(0, dir * distance, -Math.sin(angle) * 0.6);
+      seg.rotation.x = dir * angle * 0.4;
+      seg.castShadow = true;
+      group.add(seg);
+    }
+
+    // Stripes (NATO style)
+    const stripeMat = new THREE.MeshStandardMaterial({
+      color: 0x1a1a1a,
+      metalness: 0.1,
+      roughness: 0.95
+    });
+    for (let i = 0; i < segments; i++) {
+      const t = i / (segments - 1);
+      const w = 1.25 - t * 0.2;
+      const angle = t * 0.5;
+      const distance = 2.0 + i * 0.24;
+      
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(w, 0.04, 0.085),
+        stripeMat
+      );
+      stripe.position.set(0, dir * distance - 0.04, -Math.sin(angle) * 0.6);
+      stripe.rotation.x = dir * angle * 0.4;
+      group.add(stripe);
+    }
+  }
+
+  return group;
+}
+
+// ============ ANIMATION SYSTEM ============
+const animations = [];
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+function addAnim(opts) {
+  animations.push({
+    duration: opts.duration || 400,
+    startTime: performance.now() + (opts.delay || 0),
+    update: opts.update || (() => {}),
+    onComplete: opts.onComplete
+  });
+}
+
+// ============ STRAP SWAP ANIMATION ============
+let strapSwapInProgress = false;
+
+function animateStrapSwap() {
+  if (strapSwapInProgress) return;
+  strapSwapInProgress = true;
+
+  const oldStraps = watchGroup.children.filter(c => c.userData.isStrap);
+
+  // Phase 1: fade out + slide back
+  oldStraps.forEach((strap, idx) => {
+    const dir = strap === oldStraps[0] ? 1 : -1;
+    strap.children.forEach(c => {
+      if (c.material) {
+        c.material.transparent = true;
+        c.material.opacity = 1;
+      }
+    });
+    addAnim({
+      duration: 350,
+      delay: idx * 40,
+      update: (t) => {
+        strap.children.forEach(c => {
+          if (c.material) c.material.opacity = 1 - t;
+        });
+        strap.position.z = -t * 0.4;
+        strap.position.y = dir * t * 0.2;
+      }
+    });
+  });
+
+  // Phase 2: build new straps and fade in
+  setTimeout(() => {
+    // Remove old
+    oldStraps.forEach(s => {
+      watchGroup.remove(s);
+      s.traverse(o => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) o.material.dispose();
+      });
+    });
+
+    buildStrap();
+    const newStraps = watchGroup.children.filter(c => c.userData.isStrap);
+
+    newStraps.forEach((strap, idx) => {
+      const dir = strap === newStraps[0] ? 1 : -1;
+      strap.children.forEach(c => {
+        if (c.material) {
+          c.material.transparent = true;
+          c.material.opacity = 0;
+        }
+      });
+      const targetZ = 0;
+      const targetY = 0;
+      strap.position.z = -0.4;
+      strap.position.y = dir * 0.2;
+
+      addAnim({
+        duration: 400,
+        delay: idx * 40,
+        update: (t) => {
+          strap.children.forEach(c => {
+            if (c.material) c.material.opacity = t;
+          });
+          strap.position.z = -0.4 + t * 0.4;
+          strap.position.y = dir * 0.2 * (1 - t);
+        },
+        onComplete: () => {
+          strap.children.forEach(c => {
+            if (c.material) {
+              c.material.transparent = false;
+              c.material.opacity = 1;
+            }
+          });
+          strapSwapInProgress = false;
+        }
+      });
+    });
+  }, 400);
+}
+
+// ============ HANDS UPDATE ============
+function updateHands() {
+  if (!state.hands) return;
+  const now = new Date();
+  const ms = now.getMilliseconds();
+  const s = now.getSeconds() + ms / 1000;
+  const m = now.getMinutes() + s / 60;
+  const h = (now.getHours() % 12) + m / 60;
+
+  state.hands.hour.rotation.z = -h * (Math.PI * 2 / 12);
+  state.hands.min.rotation.z = -m * (Math.PI * 2 / 60);
+  state.hands.sec.rotation.z = -s * (Math.PI * 2 / 60);
+
+  // Subdials
+  if (subdials[0]) {
+    // 24-hour indicator
+    const h24 = now.getHours() + now.getMinutes() / 60;
+    subdials[0].hand.rotation.z = -h24 * (Math.PI * 2 / 24);
+  }
+  if (subdials[1]) {
+    // Small seconds
+    subdials[1].hand.rotation.z = -s * (Math.PI * 2 / 60);
+  }
+  if (subdials[2]) {
+    // Chronograph minutes
+    subdials[2].hand.rotation.z = -m * (Math.PI * 2 / 60);
+  }
+
+  // Live time display
+  const timeEl = document.getElementById('liveTime');
+  if (timeEl) {
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    timeEl.textContent = `${hh}:${mm}:${ss}`;
+  }
+}
+
+// ============ RAYCASTING (complication hover) ============
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let hoveredComplication = null;
+
+canvas.addEventListener('pointermove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(interactiveMeshes);
+
+  const infoCard = document.getElementById('infoCard');
+  const infoLabel = document.getElementById('infoLabel');
+  const infoName = document.getElementById('infoName');
+  const infoDesc = document.getElementById('infoDesc');
+
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    if (hoveredComplication !== obj) {
+      // Unhighlight previous
+      if (hoveredComplication) {
+        hoveredComplication.material.emissive.setHex(0x000000);
+        hoveredComplication.material.emissiveIntensity = 0;
+      }
+      hoveredComplication = obj;
+      hoveredComplication.material.emissive.setHex(0xd4a574);
+      hoveredComplication.material.emissiveIntensity = 0.4;
+
+      // Update info card
+      infoLabel.textContent = obj.userData.label + ' · COMPLICATION';
+      infoName.textContent = obj.userData.name;
+      infoDesc.textContent = obj.userData.desc;
+      
+      // Update right panel complication highlight
+      document.querySelectorAll('.complication-row').forEach(r => r.classList.remove('glow'));
+      const row = document.querySelector(`.complication-row[data-complication="${obj.userData.index}"]`);
+      if (row) row.classList.add('glow');
+    }
+    // Position info card near cursor
+    infoCard.style.left = `${e.clientX - rect.left}px`;
+    infoCard.style.top = `${e.clientY - rect.top}px`;
+    infoCard.classList.add('visible');
+    canvas.style.cursor = 'pointer';
+  } else {
+    if (hoveredComplication) {
+      hoveredComplication.material.emissive.setHex(0x000000);
+      hoveredComplication.material.emissiveIntensity = 0;
+      hoveredComplication = null;
+      document.querySelectorAll('.complication-row').forEach(r => r.classList.remove('glow'));
+    }
+    infoCard.classList.remove('visible');
+    canvas.style.cursor = 'grab';
+  }
+});
+
+canvas.addEventListener('pointerleave', () => {
+  if (hoveredComplication) {
+    hoveredComplication.material.emissive.setHex(0x000000);
+    hoveredComplication.material.emissiveIntensity = 0;
+    hoveredComplication = null;
+  }
+  document.getElementById('infoCard').classList.remove('visible');
+  document.querySelectorAll('.complication-row').forEach(r => r.classList.remove('glow'));
+});
+
+canvas.style.cursor = 'grab';
+canvas.addEventListener('pointerdown', () => canvas.style.cursor = 'grabbing');
+canvas.addEventListener('pointerup', () => canvas.style.cursor = 'grab');
+
+// ============ BACKGROUND PARTICLES ============
+const particleCount = 180;
+const particleGeo = new THREE.BufferGeometry();
+const positions = new Float32Array(particleCount * 3);
+const sizes = new Float32Array(particleCount);
+for (let i = 0; i < particleCount; i++) {
+  positions[i * 3] = (Math.random() - 0.5) * 30;
+  positions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+  positions[i * 3 + 2] = (Math.random() - 0.5) * 20 - 5;
+  sizes[i] = Math.random() * 0.04 + 0.01;
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+particleGeo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+
+const particleMat = new THREE.PointsMaterial({
+  color: 0xd4a574,
+  size: 0.05,
+  transparent: true,
+  opacity: 0.5,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  sizeAttenuation: true
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
+
+// ============ TRY-ON MODE ============
+let webcamStream = null;
+
+async function toggleTryOn() {
+  state.tryOnMode = !state.tryOnMode;
+  const btn = document.getElementById('tryonBtn');
+  const label = document.getElementById('tryonLabel');
+  const container = document.getElementById('webcamContainer');
+  const arStatus = document.getElementById('arStatus');
+
+  if (state.tryOnMode) {
+    try {
+      webcamStream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      const video = document.getElementById('webcamVideo');
+      video.srcObject = webcamStream;
+      container.classList.add('active');
+      btn.classList.add('active');
+      label.textContent = 'Exit AR Mode';
+      arStatus.classList.remove('hidden');
+      
+      // Animate watch to wrist position
+      addAnim({
+        duration: 1000,
+        update: (t) => {
+          const e = easeInOutCubic(t);
+          watchGroup.position.y = -1.2 * e;
+          watchGroup.position.x = 0.3 * e;
+          watchGroup.rotation.x = -0.12 - 0.32 * e;
+          watchGroup.rotation.y = 0.18 - 0.18 * e;
+          watchGroup.rotation.z = -0.15 * e;
+          controls.minDistance = 2.5;
+          controls.maxDistance = 8;
+        }
+      });
+
+      showToast('AR Wrist Mode active. Position your wrist in view of the camera.');
+    } catch (err) {
+      console.error(err);
+      state.tryOnMode = false;
+      showToast('Camera access denied. Please allow camera permissions to use AR Mode.');
+    }
+  } else {
+    if (webcamStream) {
+      webcamStream.getTracks().forEach(t => t.stop());
+      webcamStream = null;
+    }
+    container.classList.remove('active');
+    btn.classList.remove('active');
+    label.textContent = 'Try On Wrist';
+    arStatus.classList.add('hidden');
+    controls.minDistance = 4;
+    controls.maxDistance = 14;
+
+    addAnim({
+      duration: 800,
+      update: (t) => {
+        const e = easeInOutCubic(t);
+        watchGroup.position.y = -1.2 * (1 - e);
+        watchGroup.position.x = 0.3 * (1 - e);
+        watchGroup.rotation.x = -0.44 + 0.32 * e;
+        watchGroup.rotation.y = 0 + 0.18 * e;
+        watchGroup.rotation.z = -0.15 + 0.15 * e;
+      }
+    });
+
+    showToast('Exited AR Mode.');
+  }
+}
+
+// ============ UI BUILDERS ============
+function buildOptions() {
+  // Case materials
+  const caseOpts = document.getElementById('caseMaterialOpts');
+  Object.entries(materials).forEach(([key, m]) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-chip' + (key === state.caseMaterial ? ' active' : '');
+    btn.dataset.key = key;
+    btn.dataset.type = 'caseMaterial';
+    btn.innerHTML = `
+      <div class="swatch swatch-metallic" style="background-color: #${m.color.toString(16).padStart(6, '0')};"></div>
+      <span>${m.name}</span>
+    `;
+    caseOpts.appendChild(btn);
+  });
+
+  // Dial colors
+  const dialOpts = document.getElementById('dialColorOpts');
+  Object.entries(dials).forEach(([key, d]) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-chip' + (key === state.dialColor ? ' active' : '');
+    btn.dataset.key = key;
+    btn.dataset.type = 'dialColor';
+    btn.innerHTML = `
+      <div class="swatch" style="background-color: #${d.color.toString(16).padStart(6, '0')};"></div>
+      <span>${d.name}</span>
+    `;
+    dialOpts.appendChild(btn);
+  });
+
+  // Straps
+  const strapOpts = document.getElementById('strapOpts');
+  Object.entries(straps).forEach(([key, s]) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-chip' + (key === state.strap ? ' active' : '');
+    btn.dataset.key = key;
+    btn.dataset.type = 'strap';
+    btn.innerHTML = `
+      <div class="swatch" style="background-color: #${s.color.toString(16).padStart(6, '0')};"></div>
+      <span>${s.name}</span>
+    `;
+    strapOpts.appendChild(btn);
+  });
+
+  // Accents
+  const accentOpts = document.getElementById('accentOpts');
+  Object.entries(accents).forEach(([key, a]) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt-chip' + (key === state.accent ? ' active' : '');
+    btn.dataset.key = key;
+    btn.dataset.type = 'accent';
+    btn.innerHTML = `
+      <div class="swatch" style="background-color: #${a.color.toString(16).padStart(6, '0')};"></div>
+      <span>${a.name}</span>
+    `;
+    accentOpts.appendChild(btn);
+  });
+
+  // Wire up option clicks
+  document.querySelectorAll('.opt-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const type = chip.dataset.type;
+      const key = chip.dataset.key;
+      
+      // Update active state
+      document.querySelectorAll(`.opt-chip[data-type="${type}"]`).forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      
+      // Update state
+      const prevValue = state[type];
+      state[type] = key;
+      
+      // Update labels
+      updateLabels();
+      
+      // Rebuild watch
+      if (type === 'strap') {
+        animateStrapSwap();
+      } else {
+        buildWatch();
+      }
+      
+      updateSpecs();
+      updatePrice();
+      
+      // Deselect preset if custom config
+      if (!isPresetMatch()) {
+        document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+      }
+    });
+  });
+}
+
+function updateLabels() {
+  document.getElementById('caseMatLabel').textContent = materials[state.caseMaterial].name;
+  document.getElementById('dialColorLabel').textContent = dials[state.dialColor].name;
+  document.getElementById('strapLabel').textContent = straps[state.strap].name;
+  document.getElementById('accentLabel').textContent = accents[state.accent].name;
+  document.getElementById('caseSizeLabel').textContent = state.caseSize;
+}
+
+function updateSpecs() {
+  document.getElementById('specCase').textContent = materials[state.caseMaterial].name;
+  document.getElementById('specDial').textContent = dials[state.dialColor].name;
+  document.getElementById('specStrap').textContent = straps[state.strap].name;
+  document.getElementById('specSize').textContent = state.caseSize;
+}
+
+function updatePrice() {
+  const price = basePrice 
+    + materials[state.caseMaterial].price 
+    + dials[state.dialColor].price 
+    + straps[state.strap].price 
+    + accents[state.accent].price;
+  document.getElementById('priceDisplay').textContent = `€ ${price.toLocaleString()}`;
+}
+
+function isPresetMatch() {
+  return presets.some((p, idx) => {
+    if (p.caseMaterial !== state.caseMaterial) return false;
+    if (p.dialColor !== state.dialColor) return false;
+    if (p.strap !== state.strap) return false;
+    if (p.accent !== state.accent) return false;
+    document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+    document.querySelector(`.preset-card[data-preset="${idx}"]`)?.classList.add('active');
+    document.getElementById('refName').textContent = `Calibre 03 · ${p.name}`;
+    return true;
+  });
+}
+
+// ============ PRESETS ============
+document.querySelectorAll('.preset-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const idx = parseInt(card.dataset.preset);
+    const p = presets[idx];
+    
+    document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    
+    state.caseMaterial = p.caseMaterial;
+    state.dialColor = p.dialColor;
+    state.strap = p.strap;
+    state.accent = p.accent;
+    
+    // Update UI active states
+    document.querySelectorAll('.opt-chip').forEach(c => c.classList.remove('active'));
+    document.querySelector(`.opt-chip[data-type="caseMaterial"][data-key="${p.caseMaterial}"]`)?.classList.add('active');
+    document.querySelector(`.opt-chip[data-type="dialColor"][data-key="${p.dialColor}"]`)?.classList.add('active');
+    document.querySelector(`.opt-chip[data-type="strap"][data-key="${p.strap}"]`)?.classList.add('active');
+    document.querySelector(`.opt-chip[data-type="accent"][data-key="${p.accent}"]`)?.classList.add('active');
+    
+    document.getElementById('refName').textContent = `Calibre 03 · ${p.name}`;
+    
+    animateStrapSwap();
+    buildWatch();
+    updateLabels();
+    updateSpecs();
+    updatePrice();
+    
+    showToast(`Preset "${p.name}" applied.`);
+  });
+});
+
+// ============ CASE SIZE SLIDER ============
+const sizeSlider = document.getElementById('caseSizeSlider');
+sizeSlider.addEventListener('input', (e) => {
+  state.caseSize = parseInt(e.target.value);
+  const scale = state.caseSize / 41;
+  watchGroup.scale.setScalar(scale * (state.tryOnMode ? 0.85 : 1));
+  document.getElementById('caseSizeLabel').textContent = state.caseSize;
+  document.getElementById('specSize').textContent = state.caseSize;
+});
+
+// ============ RESET ============
+document.getElementById('resetBtn').addEventListener('click', () => {
+  Object.assign(state, defaultState);
+  sizeSlider.value = 41;
+  
+  document.querySelectorAll('.opt-chip').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.opt-chip[data-type="caseMaterial"][data-key="${state.caseMaterial}"]`)?.classList.add('active');
+  document.querySelector(`.opt-chip[data-type="dialColor"][data-key="${state.dialColor}"]`)?.classList.add('active');
+  document.querySelector(`.opt-chip[data-type="strap"][data-key="${state.strap}"]`)?.classList.add('active');
+  document.querySelector(`.opt-chip[data-type="accent"][data-key="${state.accent}"]`)?.classList.add('active');
+  
+  document.querySelectorAll('.preset-card').forEach(c => c.classList.remove('active'));
+  document.querySelector('.preset-card[data-preset="0"]')?.classList.add('active');
+  document.getElementById('refName').textContent = 'Calibre 03';
+  
+  watchGroup.scale.setScalar(1);
+  animateStrapSwap();
+  buildWatch();
+  updateLabels();
+  updateSpecs();
+  updatePrice();
+  showToast('Configuration reset to default.');
+});
+
+// ============ TRY-ON BUTTON ============
+document.getElementById('tryonBtn').addEventListener('click', toggleTryOn);
+
+// ============ INQUIRE BUTTON ============
+document.getElementById('inquireBtn').addEventListener('click', () => {
+  showToast('Atelier request submitted. A specialist will contact you within 48 hours.');
+});
+
+// ============ TOAST ============
+let toastTimeout;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => toast.classList.remove('show'), 3200);
+}
+
+// ============ RESIZE ============
+function onResize() {
+  const w = viewport.clientWidth;
+  const h = viewport.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+
+// ============ ANIMATION LOOP ============
+function animate() {
+  requestAnimationFrame(animate);
+
+  // Process animations
+  const now = performance.now();
+  for (let i = animations.length - 1; i >= 0; i--) {
+    const anim = animations[i];
+    const elapsed = now - anim.startTime;
+    if (elapsed < 0) continue;
+    const t = Math.min(elapsed / anim.duration, 1);
+    const eased = easeInOutCubic(t);
+    anim.update(eased);
+    if (t >= 1) {
+      if (anim.onComplete) anim.onComplete();
+      animations.splice(i, 1);
+    }
+  }
+
+  // Update hands
+  updateHands();
+
+  // Subtle idle motion
+  if (!state.tryOnMode) {
+    watchGroup.position.y = Math.sin(now * 0.0006) * 0.06;
+  }
+
+  // Particles drift
+  particles.rotation.y += 0.0004;
+  particles.rotation.x = Math.sin(now * 0.0001) * 0.05;
+
+  // Accent light pulse
+  accentLight.intensity = 1.5 + Math.sin(now * 0.002) * 0.4;
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ============ INIT ============
+buildOptions();
+buildWatch();
+updateLabels();
+updateSpecs();
+updatePrice();
+onResize();
+animate();
+
+// Hide loading
+setTimeout(() => {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+  setTimeout(() => {
+    showToast('Welcome to HORLOGÉ Atelier. Configure your timepiece.');
+  }, 800);
+}, 1400);
+
+// Keyboard shortcut for try-on
+window.addEventListener('keydown', (e) => {
+  if (e.key === 't' || e.key === 'T') {
+    if (!e.target.matches('input, textarea')) {
+      toggleTryOn();
+    }
+  }
+});
+</script>
+
+</body>
+</html>
