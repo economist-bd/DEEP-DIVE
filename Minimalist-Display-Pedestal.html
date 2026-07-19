@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimalist Display Pedestal</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000000;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #ffffff;
+        }
+        canvas {
+            display: block;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            opacity: 0.8;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="instructions">Hover over the pedestal to intensify neon glow</div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+        // --- Core Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+        scene.fog = new THREE.Fog(0x000000, 8, 25);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+        camera.position.set(0, 2.5, 7);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // --- Environment for Reflections ---
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+        scene.add(ambientLight);
+
+        const spotLight = new THREE.SpotLight(0xffffff, 30, 15, Math.PI / 8, 0.4, 1.5);
+        spotLight.position.set(0, 8, 0);
+        spotLight.target.position.set(0, 0, 0);
+        spotLight.castShadow = true;
+        spotLight.shadow.mapSize.width = 1024;
+        spotLight.shadow.mapSize.height = 1024;
+        spotLight.shadow.bias = -0.0001;
+        scene.add(spotLight);
+        scene.add(spotLight.target);
+
+        // Neon point light inside the frame
+        const neonLight = new THREE.PointLight(0x00ffff, 2, 6);
+        neonLight.position.set(0, 1.5, 0);
+        scene.add(neonLight);
+
+        // --- Floor (Polished Concrete) ---
+        const floorGeo = new THREE.CircleGeometry(20, 64);
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            metalness: 0.8,
+            roughness: 0.35
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // --- Pedestal Base (Matte Black Hex) ---
+        const hexShape = new THREE.Shape();
+        const hexRadius = 1.2;
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const x = Math.cos(angle) * hexRadius;
+            const y = Math.sin(angle) * hexRadius;
+            if (i === 0) hexShape.moveTo(x, y);
+            else hexShape.lineTo(x, y);
+        }
+        hexShape.closePath();
+
+        const hexGeo = new THREE.ExtrudeGeometry(hexShape, {
+            depth: 0.4,
+            bevelEnabled: true,
+            bevelThickness: 0.05,
+            bevelSize: 0.05,
+            bevelSegments: 4
+        });
+        hexGeo.rotateX(-Math.PI / 2);
+        
+        const matteBlackMat = new THREE.MeshStandardMaterial({
+            color: 0x0a0a0a,
+            metalness: 0.1,
+            roughness: 0.9
+        });
+        const hexBase = new THREE.Mesh(hexGeo, matteBlackMat);
+        hexBase.position.y = 0.0;
+        hexBase.castShadow = true;
+        hexBase.receiveShadow = true;
+        scene.add(hexBase);
+
+        // --- Levitating Glass Frame ---
+        const frameGroup = new THREE.Group();
+        const glassMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff,
+            metalness: 0,
+            roughness: 0,
+            transmission: 1,
+            thickness: 0.5,
+            ior: 1.5,
+            transparent: true,
+            opacity: 1
+        });
+
+        const neonMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+        const neonGroup = new THREE.Group();
+
+        // Frame dimensions
+        const w = 1.0, h = 2.5, t = 0.08;
+
+        // Glass Edges
+        const edgeGeoV = new THREE.BoxGeometry(t, h, t);
+        const edgeGeoH = new THREE.BoxGeometry(w + t, t, t);
+
+        const leftGlass = new THREE.Mesh(edgeGeoV, glassMat);
+        leftGlass.position.set(-w/2, h/2 + 0.5, 0);
+        const rightGlass = leftGlass.clone();
+        rightGlass.position.x = w/2;
+        const topGlass = new THREE.Mesh(edgeGeoH, glassMat);
+        topGlass.position.set(0, h + 0.5, 0);
+        const bottomGlass = new THREE.Mesh(edgeGeoH, glassMat);
+        bottomGlass.position.set(0, 0.5, 0);
+
+        frameGroup.add(leftGlass, rightGlass, topGlass, bottomGlass);
+
+        // Neon Tubes (slightly smaller, embedded in glass)
+        const tubeGeoV = new THREE.BoxGeometry(t * 0.3, h, t * 0.3);
+        const tubeGeoH = new THREE.BoxGeometry(w + t, t * 0.3, t * 0.3);
+
+        const nLeft = new THREE.Mesh(tubeGeoV, neonMat);
+        nLeft.position.set(-w/2, h/2 + 0.5, 0);
+        const nRight = new THREE.Mesh(tubeGeoV, neonMat);
+        nRight.position.set(w/2, h/2 + 0.5, 0);
+        const nTop = new THREE.Mesh(tubeGeoH, neonMat);
+        nTop.position.set(0, h + 0.5, 0);
+        const nBottom = new THREE.Mesh(tubeGeoH, neonMat);
+        nBottom.position.set(0, 0.5, 0);
+
+        neonGroup.add(nLeft, nRight, nTop, nBottom);
+        scene.add(frameGroup, neonGroup);
+
+        // --- Woman Figure (Stylized Elegant Silhouette) ---
+        const womanGroup = new THREE.Group();
+        womanGroup.position.y = 0.4; // Resting on pedestal
+
+        const figureMat = new THREE.MeshPhysicalMaterial({
+            color: 0x050505,
+            metalness: 0.2,
+            roughness: 0.6,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.3
+        });
+
+        // Procedural Dress/Body using LatheGeometry
+        const points = [];
+        points.push(new THREE.Vector2(0.18, 0.0));     // Hem center
+        points.push(new THREE.Vector2(0.25, 0.0));     // Hem edge
+        points.push(new THREE.Vector2(0.22, 0.4));     // Lower dress
+        points.push(new THREE.Vector2(0.18, 0.8));     // Knees
+        points.push(new THREE.Vector2(0.15, 1.1));     // Hips
+        points.push(new THREE.Vector2(0.12, 1.4));     // Waist
+        points.push(new THREE.Vector2(0.18, 1.7));     // Chest
+        points.push(new THREE.Vector2(0.14, 1.9));     // Shoulders
+        points.push(new THREE.Vector2(0.08, 2.0));     // Neck base
+        
+        const dressGeo = new THREE.LatheGeometry(points, 32);
+        const dress = new THREE.Mesh(dressGeo, figureMat);
+        dress.castShadow = true;
+        womanGroup.add(dress);
+
+        // Head
+        const headGeo = new THREE.SphereGeometry(0.12, 32, 32);
+        const head = new THREE.Mesh(headGeo, figureMat);
+        head.position.y = 2.1;
+        head.castShadow = true;
+        womanGroup.add(head);
+
+        scene.add(womanGroup);
+
+        // --- Post Processing (Bloom) ---
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.1);
+        composer.addPass(bloomPass);
+        composer.addPass(new OutputPass());
+
+        // --- Controls ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.autoRotate = true; // Idle auto-orbit
+        controls.autoRotateSpeed = 1.0;
+        controls.minDistance = 4;
+        controls.maxDistance = 12;
+        controls.minPolarAngle = Math.PI / 4;
+        controls.maxPolarAngle = Math.PI / 2.1; // Prevent going under floor
+        controls.target.set(0, 1.5, 0);
+
+        // --- Interactivity (Hover-Brighten Neon) ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isHovering = false;
+
+        window.addEventListener('pointermove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
+
+        function checkIntersections() {
+            raycaster.setFromCamera(mouse, camera);
+            // Check intersection with base, frame, and woman
+            const intersects = raycaster.intersectObjects([hexBase, ...frameGroup.children, ...womanGroup.children]);
+            isHovering = intersects.length > 0;
+        }
+
+        // --- Animation Loop ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+
+            checkIntersections();
+
+            // Levitation Animation
+            const floatY = Math.sin(time * 0.8) * 0.1;
+            frameGroup.position.y = floatY;
+            neonGroup.position.y = floatY;
+
+            // Neon Hover Logic
+            const targetBloomStrength = isHovering ? 2.5 : 1.2;
+            const targetNeonIntensity = isHovering ? 5.0 : 2.0;
+            const targetNeonColor = isHovering ? new THREE.Color(0xffffff) : new THREE.Color(0x00ffff);
+            const currentNeonColor = new THREE.Color().copy(nLeft.material.color);
+
+            bloomPass.strength += (targetBloomStrength - bloomPass.strength) * 0.1;
+            neonLight.intensity += (targetNeonIntensity - neonLight.intensity) * 0.1;
+            
+            neonGroup.children.forEach(tube => {
+                tube.material.color.lerp(targetNeonColor, 0.1);
+            });
+
+            controls.update();
+            composer.render();
+        }
+
+        // --- Resize Handler ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
